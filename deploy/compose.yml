@@ -1,0 +1,117 @@
+# Collarbell on the server: docker compose project "collarbell" in /opt/collarbell (see deploy/README.md).
+# Only the web container is published, and only on 127.0.0.1:5180: the host's nginx passes the public address to it
+# (host-nginx.conf). The secrets come from /opt/collarbell/.env (env.example lists them).
+name: collarbell
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: 10m
+    max-file: "3"
+
+services:
+  # The landing and the routes of the public address: /api/ and /health to the API, /collarbell/ to the files.
+  web:
+    build:
+      context: ..
+      dockerfile: deploy/web.Dockerfile
+      labels:
+        collarbell.image: web
+    image: collarbell-web:current
+    ports:
+      - "127.0.0.1:5180:80"
+    depends_on:
+      - api
+    restart: unless-stopped
+    mem_limit: 128m
+    logging: *logging
+
+  api:
+    build:
+      context: ../backend
+      labels:
+        collarbell.image: api
+    image: collarbell-api:current
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      # GSS (Kerberos) off: the image has no Kerberos library, and the database is only reached inside this project.
+      ConnectionStrings__collarbelldb: "Host=postgres;Database=collarbell;Username=collarbell;Password=${POSTGRES_PASSWORD:?};Gss Encryption Mode=Disable"
+      ConnectionStrings__storage: "Endpoint=http://storage:8333;AccessKey=${S3_ACCESS_KEY:?};SecretKey=${S3_SECRET_KEY:?}"
+      # File links are signed for the public address; the web container passes /collarbell/… on to the storage.
+      Storage__PublicEndpoint: ${PUBLIC_URL:?}
+      Ai__Gemini__ApiKey: ${GEMINI_API_KEY:-}
+      Notifications__FirebaseCredentials: ${FIREBASE_SERVICE_ACCOUNT:-}
+      # Alerts to the owner's Telegram (the bot @collarbell_alerts_bot); empty = only in the log.
+      Alerts__TelegramBotToken: ${TELEGRAM_BOT_TOKEN:-}
+      Alerts__TelegramChatId: ${TELEGRAM_CHAT_ID:-}
+      # The admin shows the age of the nightly backups, and an old one is an alert.
+      Observe__BackupDir: /backups
+    volumes:
+      - /opt/collarbell/backups:/backups:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+      storage:
+        condition: service_started
+    restart: unless-stopped
+    mem_limit: 1g
+    logging: *logging
+
+  postgres:
+    image: postgres:18.3
+    environment:
+      POSTGRES_USER: collarbell
+      POSTGRES_DB: collarbell
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?}
+    volumes:
+      - postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "collarbell", "-d", "collarbell"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    restart: unless-stopped
+    mem_limit: 1g
+    logging: *logging
+
+  # Photos and documents: SeaweedFS with an S3 API, set up as the AppHost does it locally.
+  storage:
+    image: chrislusf/seaweedfs:4.46
+    entrypoint: ["sh", "-c"]
+    command:
+      - |
+        cat > /tmp/s3.json <<EOF
+        {"identities":[{"name":"collarbell","credentials":[{"accessKey":"$$S3_ACCESS_KEY","secretKey":"$$S3_SECRET_KEY"}],"actions":["Admin","Read","Write","List","Tagging"]}]}
+        EOF
+        exec weed server -dir=/data -filer -s3 -s3.config=/tmp/s3.json
+    environment:
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:?}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:?}
+    volumes:
+      - storage-data:/data
+    restart: unless-stopped
+    mem_limit: 1g
+    logging: *logging
+
+  # Nightly copies of the database and the files in /opt/collarbell/backups, kept for 14 days (backup.sh).
+  backup:
+    image: postgres:18.3
+    entrypoint: ["bash", "/deploy/backup.sh"]
+    environment:
+      PGHOST: postgres
+      PGUSER: collarbell
+      PGDATABASE: collarbell
+      PGPASSWORD: ${POSTGRES_PASSWORD:?}
+    volumes:
+      - ./:/deploy:ro
+      - /opt/collarbell/backups:/backups
+      - storage-data:/storage:ro
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    mem_limit: 256m
+    logging: *logging
+
+volumes:
+  postgres-data:
+  storage-data:

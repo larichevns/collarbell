@@ -1,0 +1,13 @@
+# The web image needs only the landing, the admin, the web app and the nginx routes.
+**
+!landing/
+!admin/
+!web/
+!deploy/nginx.conf
+landing/node_modules/
+landing/dist/
+landing/.astro/
+admin/node_modules/
+admin/dist/
+web/node_modules/
+web/dist/

@@ -1,0 +1,93 @@
+<!doctype html>
+<meta charset="utf-8" />
+<style>
+  body { font: 12px/1.45 -apple-system, system-ui, sans-serif; margin: 12px; color: #1f2421; }
+  .row { display: flex; align-items: center; gap: 8px; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; background: #b9b2a4; flex: none; }
+  .dot.on { background: #127a5c; }
+  .dot.off { background: #b3261e; }
+  h1 { font-size: 13px; margin: 0; }
+  p { margin: 8px 0 0; color: #5d655f; }
+  #last { color: #1f2421; word-break: break-word; }
+  button { margin-top: 12px; font: inherit; padding: 6px 12px; border-radius: 6px;
+           border: 1px solid #b9b2a4; background: #fff; cursor: pointer; }
+</style>
+<div class="row"><div id="dot" class="dot"></div><h1 id="title">Подключаюсь к Mac…</h1></div>
+<p>Пока это окно открыто, Claude собирает экраны в этом файле. Закройте окно, чтобы остановить.</p>
+<p id="last">Заданий пока не было.</p>
+<button id="pause">Пауза</button>
+<script>
+  const server = 'http://localhost:8765';
+  const dot = document.getElementById('dot');
+  const title = document.getElementById('title');
+  const last = document.getElementById('last');
+  const pauseButton = document.getElementById('pause');
+  let paused = false, busy = false, done = 0, failed = 0;
+
+  function show(connected, text) {
+    dot.className = 'dot ' + (connected ? 'on' : 'off');
+    title.textContent = text;
+  }
+
+  function toMain(message) {
+    parent.postMessage({ pluginMessage: message }, '*');
+  }
+
+  async function poll() {
+    if (paused || busy) return;
+    try {
+      const response = await fetch(server + '/job');
+      show(true, 'Связь с Mac есть');
+      if (response.status !== 200) return;
+      const job = await response.json();
+      busy = true;
+      show(true, 'Выполняю задание ' + job.id + '…');
+      toMain({ type: 'job', id: job.id, code: job.code });
+    } catch (error) {
+      show(false, 'Нет связи с Mac (bridge.py не запущен?)');
+    }
+  }
+
+  pauseButton.onclick = () => {
+    paused = !paused;
+    pauseButton.textContent = paused ? 'Продолжить' : 'Пауза';
+    if (paused) show(true, 'На паузе');
+  };
+
+  window.onmessage = async (event) => {
+    const message = event.data.pluginMessage;
+    if (!message) return;
+    if (message.type === 'result') {
+      await fetch(server + '/result/' + message.id, {
+        method: 'POST',
+        body: JSON.stringify(message.result),
+      }).catch(() => {});
+      message.result.ok ? done++ : failed++;
+      last.textContent = 'Готово заданий: ' + done + (failed ? ', с ошибкой: ' + failed : '') +
+        '. Последнее: ' + (message.result.ok ? 'без ошибок' : message.result.error);
+      busy = false;
+      return;
+    }
+    try {
+      let value = null;
+      if (message.type === 'shot') {
+        const response = await fetch(server + '/shot/' + encodeURIComponent(message.name), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/octet-stream' },
+          body: message.bytes,
+        });
+        if (!response.ok) throw new Error('shot: HTTP ' + response.status);
+      } else if (message.type === 'ref') {
+        const response = await fetch(server + '/ref/' + encodeURIComponent(message.name));
+        if (!response.ok) throw new Error('no reference ' + message.name);
+        value = new Uint8Array(await response.arrayBuffer());
+      }
+      toMain({ type: 'answer', requestId: message.requestId, value });
+    } catch (error) {
+      toMain({ type: 'failed', requestId: message.requestId, error: String(error) });
+    }
+  };
+
+  setInterval(poll, 1000);
+  poll();
+</script>

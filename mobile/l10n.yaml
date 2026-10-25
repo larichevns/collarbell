@@ -1,0 +1,9 @@
+# gen-l10n configuration (Flutter 3.38: no synthetic package; the generated
+# Dart files are written next to the ARB files and imported as
+# package:collarbell/l10n/app_localizations.dart).
+arb-dir: lib/l10n
+template-arb-file: app_en.arb
+output-localization-file: app_localizations.dart
+output-class: AppLocalizations
+nullable-getter: false
+preferred-supported-locales: [en]

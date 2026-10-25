@@ -1,0 +1,556 @@
+---
+// The home page in both languages: the texts first (English, then Russian), then the layout they share.
+// Everything here must be true of the app today (version 0.1); later features are named only as coming.
+import Phone from './Phone.astro';
+import Icon from './Icon.astro';
+import { pageHref, type Lang } from '../i18n';
+import type { IconName } from '../icons';
+import { webAppHref } from '../site';
+
+interface Props {
+  lang: Lang;
+}
+
+type Screen = 'today' | 'health' | 'passport' | 'visits' | 'supplies' | 'supply';
+
+interface Showcase {
+  id: string;
+  eyebrow: string;
+  title: string;
+  text: string;
+  checks?: string[];
+  note?: string;
+  screens: Screen[];
+}
+
+interface Copy {
+  hero: { badge: string; title: string; lead: string; note: string; cta: string; web: string; webNote: string };
+  features: { eyebrow: string; title: string; intro: string; items: { icon: IconName; title: string; text: string }[] };
+  showcasesLabel: string;
+  showcases: Showcase[];
+  ai: {
+    eyebrow: string;
+    title: string;
+    steps: { icon: IconName; title: string; text: string }[];
+    warning: string;
+    more: string;
+  };
+  data: { title: string; checks: string[]; link: string };
+  status: { title: string; text: string; coming: string; items: { icon: IconName; label: string }[]; link: string };
+  alt: Record<Screen, string>;
+}
+
+const COPY: Record<Lang, Copy> = {
+  en: {
+    hero: {
+      badge: 'Early testing · Android',
+      title: 'Everything your pet needs, right on time',
+      lead: 'Vaccinations, parasite treatments, vet visits, feeding and supplies for your cats and dogs, in one calm app that reminds you when something is due.',
+      note: 'Collarbell is in early testing. It isn’t in Google Play or the App Store yet.',
+      cta: 'See what it does',
+      web: 'Web version',
+      webNote: 'Already have an account? Use Collarbell in the browser too, with the same e-mail and password.',
+    },
+    features: {
+      eyebrow: 'Today, in version 0.1',
+      title: 'What Collarbell does',
+      intro: 'For Android, in English and Russian. One app for the daily routine and the paperwork of looking after a pet.',
+      items: [
+        {
+          icon: 'today',
+          title: 'Today at a glance',
+          text: 'One screen with everything due: feedings, overdue and upcoming care, visits and what to buy.',
+        },
+        {
+          icon: 'pets',
+          title: 'Your pets',
+          text: 'A profile for each cat and dog: photo, breed, birth date, coat and microchip.',
+        },
+        {
+          icon: 'vaccines',
+          title: 'Vaccinations and treatments',
+          text: 'Plans with intervals and ready-made presets, a history, a “Done” button and a clear status: due soon or overdue.',
+        },
+        {
+          icon: 'notifications',
+          title: 'Reminders',
+          text: 'Push reminders for care, visits, feeding and buying supplies. On Android for now.',
+        },
+        {
+          icon: 'stethoscope',
+          title: 'Vet visits',
+          text: 'Plan visits to the vet or the groomer and get a reminder before each one.',
+        },
+        {
+          icon: 'restaurant',
+          title: 'Feeding',
+          text: 'A feeding schedule with a reminder at mealtime and a “Fed” mark for every meal.',
+        },
+        {
+          icon: 'inventory_2',
+          title: 'Supplies',
+          text: 'See how long food and litter will last, get a reminder when it’s time to buy, and keep a shopping list.',
+        },
+        {
+          icon: 'monitor_weight',
+          title: 'Weight',
+          text: 'A weight log with a chart. The weight from a vet’s check-up joins it by itself.',
+        },
+        {
+          icon: 'family_restroom',
+          title: 'Together',
+          text: 'Share the care with your family, and invite a pet sitter as a helper who marks feedings and treatments. Changes show on every phone at once.',
+        },
+        {
+          icon: 'photo_camera',
+          title: 'Microchip from a sticker',
+          text: 'Point the camera at the barcode sticker in the passport, or pick a photo, and the chip number is filled in.',
+        },
+        {
+          icon: 'id_card',
+          title: 'Digital passport copy',
+          text: 'The passport’s sections, filled in from your records, plus photos of its pages and other documents. For your own use.',
+        },
+        {
+          icon: 'document_scanner',
+          title: 'Photos into records',
+          text: 'AI reads photos of passport pages, vet documents and product packages, and prepares drafts that you check.',
+        },
+      ],
+    },
+    showcasesLabel: 'A closer look',
+    showcases: [
+      {
+        id: 'health',
+        eyebrow: 'Health',
+        title: 'See what’s due and what’s overdue',
+        text: 'Plan vaccinations, deworming, flea and tick treatments and check-ups. Pick a ready-made preset or set your own interval. Tap “Done”, and the next date moves on by itself.',
+        checks: [
+          'Overdue, due soon and upcoming, at a glance',
+          'Reminders a week before, the day before and on the day, and again while it’s overdue',
+          'A history of everything that was done',
+        ],
+        screens: ['health'],
+      },
+      {
+        id: 'passport',
+        eyebrow: 'Passport and documents',
+        title: 'Photograph the passport, check the draft',
+        text: 'Take photos of the passport pages or of a document from the vet. AI reads vaccinations, treatments, microchips and passport details into a draft. You compare it with the paper, fix what’s wrong and save only what you choose.',
+        note: 'The digital passport is a copy for your own use. The paper passport stays the official document.',
+        screens: ['passport'],
+      },
+      {
+        id: 'routine',
+        eyebrow: 'Feeding and visits',
+        title: 'Meals and appointments, on time',
+        text: 'Set feeding times, food and portions, and get a reminder at mealtime; tap “Fed” when it’s done. Add a visit to the vet or the groomer, and Collarbell reminds you ahead of time, by default a day and two hours before.',
+        screens: ['visits'],
+      },
+      {
+        id: 'supplies',
+        eyebrow: 'Supplies',
+        title: 'Buy food before it runs out',
+        text: 'Collarbell works out from your feeding schedule how long a bag of food will last, and reminds you when it’s time to buy, allowing for delivery time. For litter and medicines, you set how much is used.',
+        checks: [
+          'A forecast for any food from any shop',
+          'A shopping list with a “Bought” button',
+          'Add a product by its barcode or a photo of the package',
+        ],
+        screens: ['supplies', 'supply'],
+      },
+    ],
+    ai: {
+      eyebrow: 'AI, carefully',
+      title: 'AI drafts, you decide',
+      steps: [
+        {
+          icon: 'photo_camera',
+          title: 'You start a scan',
+          text: 'Photograph a passport page, a vet document or a product package. Nothing goes to AI unless you start a scan.',
+        },
+        {
+          icon: 'document_scanner',
+          title: 'AI prepares a draft',
+          text: 'It turns what’s on the photo into draft records. This takes up to a minute or two.',
+        },
+        {
+          icon: 'check_circle',
+          title: 'You check and save',
+          text: 'Compare the draft with the original, fix mistakes and save only what’s right. AI can misread.',
+        },
+      ],
+      warning: 'During testing, Collarbell uses the free tier of Google’s Gemini. Under it, Google may use what you send to improve its products, and human reviewers may see it. Please don’t scan anything you wouldn’t want to share.',
+      more: 'How your data is handled',
+    },
+    data: {
+      title: 'Your data, plainly',
+      checks: [
+        'No ads, and your data is never sold',
+        'No analytics or tracking in the app',
+        'Your pets’ records are kept on a server in Germany (EU)',
+        'Download your data or delete your account in the app at any time',
+      ],
+      link: 'Read the privacy policy',
+    },
+    status: {
+      title: 'Early days, honestly',
+      text: 'Collarbell is in early testing: version 0.1 runs on Android and isn’t in Google Play or the App Store yet. It’s free while it’s being tested.',
+      coming: 'Coming',
+      items: [{ icon: 'phone_iphone', label: 'Reminders on iPhone' }],
+      link: 'Questions? See Support',
+    },
+    alt: {
+      today:
+        'The Today screen: feedings at 8:00 AM and 7:00 PM for Milo, Luna and Rex, each with a “Fed” button; Luna was fed at 8:04 AM.',
+      health:
+        'Luna’s Health tab: rabies is 3 days overdue, a vet check-up is due tomorrow, flea and tick treatment and deworming come later.',
+      passport:
+        'Luna’s Passport tab: a note that the digital copy is for information only, a card to scan passport pages, and the passport details.',
+      visits:
+        'The Visits screen: a check-up and rabies shot planned for tomorrow at 10:30 AM, and a grooming visit that took place.',
+      supplies:
+        'The Supplies screen: Royal Canin dry food under “To buy”, enough for about 2 days, with a “Bought” button; wood pellet litter enough for about 24 days.',
+      supply:
+        'A food’s page: enough for about 2 days, about 400 g left, uses 170 g a day from Milo’s and Luna’s feedings.',
+    },
+  },
+  ru: {
+    hero: {
+      badge: 'Раннее тестирование · Android',
+      title: 'Всё, что нужно питомцу,\u00a0— вовремя',
+      lead: 'Прививки, обработки от паразитов, визиты к ветеринару, кормление и запасы ваших кошек и собак\u00a0— в одном спокойном приложении, которое напомнит, когда что-то пора сделать.',
+      note: 'Collarbell сейчас на раннем тестировании. В Google Play и App Store его пока нет.',
+      cta: 'Что умеет приложение',
+      web: 'Веб-версия',
+      webNote: 'Уже есть аккаунт? Collarbell работает и в браузере\u00a0— с той же почтой и паролем.',
+    },
+    features: {
+      eyebrow: 'Уже сейчас, в версии 0.1',
+      title: 'Что умеет Collarbell',
+      intro: 'Для Android, на русском и английском. Одно приложение и для ежедневных забот, и для бумаг питомца.',
+      items: [
+        {
+          icon: 'today',
+          title: 'Всё на сегодня',
+          text: 'Один экран со всем, что пора сделать: кормления, просроченное и ближайшее, визиты и покупки.',
+        },
+        {
+          icon: 'pets',
+          title: 'Питомцы',
+          text: 'Карточка каждой кошки и собаки: фото, порода, дата рождения, окрас и номер чипа.',
+        },
+        {
+          icon: 'vaccines',
+          title: 'Прививки и обработки',
+          text: 'Планы с интервалами и готовыми шаблонами, история, кнопка «Сделано» и понятный статус: скоро или просрочено.',
+        },
+        {
+          icon: 'notifications',
+          title: 'Напоминания',
+          text: 'Уведомления об уходе, визитах, кормлении и покупках. Пока на Android.',
+        },
+        {
+          icon: 'stethoscope',
+          title: 'Визиты',
+          text: 'Запишите визит к ветеринару или грумеру\u00a0— приложение заранее напомнит о нём.',
+        },
+        {
+          icon: 'restaurant',
+          title: 'Кормление',
+          text: 'Расписание кормлений с напоминанием в нужное время и отметкой «Покормили».',
+        },
+        {
+          icon: 'inventory_2',
+          title: 'Запасы',
+          text: 'Видно, на сколько дней хватит корма и наполнителя. Приложение напомнит, когда пора покупать, и ведёт список покупок.',
+        },
+        {
+          icon: 'monitor_weight',
+          title: 'Вес',
+          text: 'Журнал веса с графиком. Вес с осмотра у ветеринара попадает туда сам.',
+        },
+        {
+          icon: 'family_restroom',
+          title: 'Вместе',
+          text: 'Заботьтесь о питомцах всей семьёй, а ситтера пригласите помощником: он отмечает кормления и обработки. Изменения сразу видны на всех телефонах.',
+        },
+        {
+          icon: 'photo_camera',
+          title: 'Чип по наклейке',
+          text: 'Наведите камеру на штрихкод наклейки в паспорте или выберите фото\u00a0— номер чипа заполнится сам.',
+        },
+        {
+          icon: 'id_card',
+          title: 'Цифровая копия паспорта',
+          text: 'Разделы паспорта, заполненные из ваших записей, а ещё фото его страниц и другие документы. Только для вас.',
+        },
+        {
+          icon: 'document_scanner',
+          title: 'Записи по фото',
+          text: 'AI читает фото страниц паспорта, документов от ветеринара и упаковок товаров и готовит черновики, которые вы проверяете.',
+        },
+      ],
+    },
+    showcasesLabel: 'Подробнее',
+    showcases: [
+      {
+        id: 'health',
+        eyebrow: 'Здоровье',
+        title: 'Видно, что скоро, а что просрочено',
+        text: 'Планируйте прививки, обработки от глистов, блох и клещей и осмотры. Выберите готовый шаблон или задайте свой интервал. Нажмите «Сделано»\u00a0— и следующая дата пересчитается сама.',
+        checks: [
+          'Просроченное, ближайшее и плановое\u00a0— сразу видно',
+          'Напоминания за неделю, за день и в день срока, а пока просрочено\u00a0— повторно',
+          'История всего, что уже сделано',
+        ],
+        screens: ['health'],
+      },
+      {
+        id: 'passport',
+        eyebrow: 'Паспорт и документы',
+        title: 'Сфотографируйте паспорт\u00a0— проверьте черновик',
+        text: 'Снимите страницы ветпаспорта или документ из клиники. AI прочитает прививки, обработки, номера чипов и данные паспорта и подготовит черновик. Вы сверяете его с бумагой, исправляете ошибки и сохраняете только то, что выбрали.',
+        note: 'Цифровая копия паспорта\u00a0— только для вас. Официальным документом остаётся бумажный паспорт.',
+        screens: ['passport'],
+      },
+      {
+        id: 'routine',
+        eyebrow: 'Кормление и визиты',
+        title: 'Кормления и визиты\u00a0— без пропусков',
+        text: 'Задайте время, корм и порцию\u00a0— в нужный момент придёт напоминание, а после кормления нажмите «Покормили». Запишите визит к ветеринару или грумеру\u00a0— Collarbell напомнит заранее, по умолчанию за сутки и за два часа.',
+        screens: ['visits'],
+      },
+      {
+        id: 'supplies',
+        eyebrow: 'Запасы',
+        title: 'Корм не закончится внезапно',
+        text: 'Collarbell считает по расписанию кормлений, на сколько дней хватит пачки корма, и напоминает, когда пора покупать, с учётом времени доставки. Для наполнителя и препаратов расход задаётся вручную.',
+        checks: [
+          'Прогноз для любого корма из любого магазина',
+          'Список покупок с кнопкой «Купили»',
+          'Товар можно добавить по штрихкоду или по фото упаковки',
+        ],
+        screens: ['supplies', 'supply'],
+      },
+    ],
+    ai: {
+      eyebrow: 'AI\u00a0— аккуратно',
+      title: 'AI готовит черновик, решаете вы',
+      steps: [
+        {
+          icon: 'photo_camera',
+          title: 'Вы начинаете скан',
+          text: 'Сфотографируйте страницу паспорта, документ от ветеринара или упаковку. Пока вы не начали скан, в AI ничего не уходит.',
+        },
+        {
+          icon: 'document_scanner',
+          title: 'AI готовит черновик',
+          text: 'Он переносит то, что на фото, в черновик записей. Это занимает до минуты-двух.',
+        },
+        {
+          icon: 'check_circle',
+          title: 'Вы проверяете и сохраняете',
+          text: 'Сверьте черновик с оригиналом, исправьте ошибки и сохраните только верное. AI может ошибаться.',
+        },
+      ],
+      warning: 'Пока идёт тестирование, Collarbell использует бесплатный тариф Gemini от Google. На этом тарифе Google может использовать отправленное для улучшения своих продуктов, а просматривать это могут сотрудники-рецензенты. Не сканируйте то, чем не готовы поделиться.',
+      more: 'Подробнее\u00a0— в политике конфиденциальности',
+    },
+    data: {
+      title: 'О данных\u00a0— коротко',
+      checks: [
+        'Без рекламы, данные не продаются',
+        'В приложении нет аналитики и отслеживания',
+        'Записи о питомцах хранятся на сервере в Германии (ЕС)',
+        'Скачать свои данные или удалить аккаунт можно в приложении в любой момент',
+      ],
+      link: 'Политика конфиденциальности',
+    },
+    status: {
+      title: 'Честно о статусе',
+      text: 'Collarbell на раннем тестировании: версия 0.1 работает на Android, в Google Play и App Store приложения пока нет. На время тестирования оно бесплатное.',
+      coming: 'Скоро',
+      items: [{ icon: 'phone_iphone', label: 'Напоминания на iPhone' }],
+      link: 'Вопросы и ответы\u00a0— на странице поддержки',
+    },
+    alt: {
+      today:
+        'Экран «Сегодня»: кормления в 8:00 и 19:00 для Барсика, Мурки и Рекса с кнопками «Покормили»; Мурку уже покормили в 8:04.',
+      health:
+        'Вкладка «Здоровье» у Мурки: прививка от бешенства просрочена на 3 дня, осмотр у ветеринара завтра, дальше обработки от блох и клещей и от глистов.',
+      passport:
+        'Вкладка «Паспорт» у Мурки: пояснение, что цифровая копия только для справки, карточка «Сканировать страницы паспорта» и данные паспорта.',
+      visits: 'Экран «Визиты»: осмотр и прививка от бешенства завтра в 10:30 и прошедший груминг.',
+      supplies:
+        'Экран «Запасы»: сухой корм Royal Canin в разделе «Купить»\u00a0— хватит примерно на 2 дня, кнопка «Купили»; древесного наполнителя хватит примерно на 24 дня.',
+      supply:
+        'Страница корма: хватит примерно на 2 дня, осталось около 400 г, расход 170 г в день по кормлениям Барсика и Мурки.',
+    },
+  },
+};
+
+const { lang } = Astro.props;
+const t = COPY[lang];
+---
+
+<section class="hero" aria-labelledby="hero-title">
+  <div class="wrap hero-grid">
+    <div class="hero-text">
+      <p class="badge">
+        <Icon name="schedule" size={18} />
+        <span>{t.hero.badge}</span>
+      </p>
+      <h1 id="hero-title">{t.hero.title}</h1>
+      <p class="lead">{t.hero.lead}</p>
+      <p class="muted">{t.hero.note}</p>
+      <div class="hero-actions">
+        <a class="button button--primary" href="#features">
+          <span>{t.hero.cta}</span>
+          <Icon name="arrow_downward" size={20} />
+        </a>
+        <a class="button button--secondary" href={webAppHref(lang)}>
+          <Icon name="devices" size={20} />
+          <span>{t.hero.web}</span>
+        </a>
+      </div>
+      <p class="muted small">{t.hero.webNote}</p>
+    </div>
+    <Phone lang={lang} screen="today" alt={t.alt.today} eager sizes="(max-width: 420px) 248px, 282px" />
+  </div>
+</section>
+
+<section class="section" id="features" aria-labelledby="features-title">
+  <div class="wrap">
+    <div class="section-head">
+      <p class="eyebrow">{t.features.eyebrow}</p>
+      <h2 class="h2" id="features-title">{t.features.title}</h2>
+      <p class="lead muted">{t.features.intro}</p>
+    </div>
+    <ul class="features">
+      {
+        t.features.items.map((item) => (
+          <li class="card feature">
+            <span class="icon-well">
+              <Icon name={item.icon} />
+            </span>
+            <h3 class="h3">{item.title}</h3>
+            <p>{item.text}</p>
+          </li>
+        ))
+      }
+    </ul>
+  </div>
+</section>
+
+<div class="section section--tinted" role="region" aria-label={t.showcasesLabel}>
+  <div class="wrap showcases">
+    {
+      t.showcases.map((row, index) => (
+        <section
+          class:list={['showcase', index % 2 === 1 && 'showcase--media-first']}
+          aria-labelledby={`showcase-${row.id}`}
+        >
+          <div class="showcase-text">
+            <p class="eyebrow">{row.eyebrow}</p>
+            <h2 class="h2" id={`showcase-${row.id}`}>
+              {row.title}
+            </h2>
+            <p class="lead">{row.text}</p>
+            {row.checks && (
+              <ul class="checks">
+                {row.checks.map((check) => (
+                  <li>
+                    <Icon name="check" />
+                    <span>{check}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {row.note && (
+              <div class="notice">
+                <Icon name="info" />
+                <p>{row.note}</p>
+              </div>
+            )}
+          </div>
+          <div class="showcase-media">
+            {row.screens.length > 1 ? (
+              <div class="phones">
+                {row.screens.map((screen) => (
+                  <Phone lang={lang} screen={screen} alt={t.alt[screen]} sizes="(max-width: 420px) 150px, 240px" />
+                ))}
+              </div>
+            ) : (
+              <Phone lang={lang} screen={row.screens[0]} alt={t.alt[row.screens[0]]} />
+            )}
+          </div>
+        </section>
+      ))
+    }
+  </div>
+</div>
+
+<section class="section" id="ai" aria-labelledby="ai-title">
+  <div class="wrap">
+    <div class="section-head">
+      <p class="eyebrow">{t.ai.eyebrow}</p>
+      <h2 class="h2" id="ai-title">{t.ai.title}</h2>
+    </div>
+    <ol class="steps">
+      {
+        t.ai.steps.map((step) => (
+          <li class="card step">
+            <span class="icon-well">
+              <Icon name={step.icon} />
+            </span>
+            <h3 class="h3">{step.title}</h3>
+            <p>{step.text}</p>
+          </li>
+        ))
+      }
+    </ol>
+    <div class="notice notice--warning">
+      <Icon name="warning" />
+      <div>
+        <p>{t.ai.warning}</p>
+        <p><a href={pageHref(lang, 'privacy')}>{t.ai.more}</a></p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section section--tinted" aria-label={`${t.data.title} · ${t.status.title}`}>
+  <div class="wrap columns">
+    <div class="card panel">
+      <h2 class="h2">{t.data.title}</h2>
+      <ul class="checks">
+        {
+          t.data.checks.map((check) => (
+            <li>
+              <Icon name="check" />
+              <span>{check}</span>
+            </li>
+          ))
+        }
+      </ul>
+      <p><a href={pageHref(lang, 'privacy')}>{t.data.link}</a></p>
+    </div>
+    <div class="card panel">
+      <h2 class="h2">{t.status.title}</h2>
+      <p>{t.status.text}</p>
+      <h3 class="h3">{t.status.coming}</h3>
+      <ul class="coming">
+        {
+          t.status.items.map((item) => (
+            <li>
+              <Icon name={item.icon} />
+              <span>{item.label}</span>
+            </li>
+          ))
+        }
+      </ul>
+      <p><a href={pageHref(lang, 'support')}>{t.status.link}</a></p>
+    </div>
+  </div>
+</section>

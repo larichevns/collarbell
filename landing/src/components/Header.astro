@@ -1,0 +1,38 @@
+---
+// The top of every page: the logo (home), the web version, Support and the switch to the same page in the other
+// language.
+import Icon from './Icon.astro';
+import { LANG_NAMES, UI, otherLang, pageHref, type Lang, type PageKey } from '../i18n';
+import { webAppHref } from '../site';
+
+interface Props {
+  lang: Lang;
+  /** The page being shown; the 404 page has none, and its switch leads to the other home page. */
+  page?: PageKey;
+}
+
+const { lang, page } = Astro.props;
+const t = UI[lang];
+const other = otherLang(lang);
+---
+
+<header class="site-header">
+  <div class="wrap header-row">
+    <a class="brand" href={pageHref(lang, 'home')}>
+      <img src="/favicon.svg" width="32" height="32" alt="" />
+      <span>Collarbell</span>
+    </a>
+    <nav class="header-nav" aria-label={t.mainNav}>
+      <a class="pill-link pill-link--wide" href={webAppHref(lang)}>{t.webVersion}</a>
+      <a
+        class="pill-link pill-link--wide"
+        href={pageHref(lang, 'support')}
+        aria-current={page === 'support' ? 'page' : undefined}>{t.support}</a
+      >
+      <a class="pill-link" href={pageHref(other, page ?? 'home')} hreflang={other} lang={other}>
+        <Icon name="language" size={20} />
+        <span>{LANG_NAMES[other]}</span>
+      </a>
+    </nav>
+  </div>
+</header>

@@ -1,0 +1,3 @@
+/* Texts of the iOS permission prompts. */
+"NSCameraUsageDescription" = "Collarbell использует камеру, чтобы сфотографировать питомца, страницы его паспорта и документы.";
+"NSPhotoLibraryUsageDescription" = "Collarbell открывает ваши фото, чтобы вы могли выбрать снимок питомца или фото его документов.";

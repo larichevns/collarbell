@@ -1,0 +1,37 @@
+# OS / editors
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.swp
+
+# .NET
+bin/
+obj/
+*.user
+*.suo
+TestResults/
+.vs/
+appsettings.*.local.json
+
+# Flutter / Dart
+mobile/.dart_tool/
+mobile/build/
+mobile/.flutter-plugins
+mobile/.flutter-plugins-dependencies
+mobile/ios/Pods/
+mobile/ios/.symlinks/
+mobile/android/.gradle/
+mobile/android/local.properties
+
+# Node
+node_modules/
+
+# Secrets
+.env
+*.env.local
+secrets.json
+
+# AI regression photos: real passports with personal data (see backend/tests/ai-samples/README.md)
+backend/tests/ai-samples/*
+!backend/tests/ai-samples/README.md

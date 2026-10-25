@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <!-- Collarbell's launcher icon, front layer: a collar across the icon and a bell hanging from it.
+       The canvas is Android's 108dp adaptive icon: launchers show the middle 72dp, cut to their shape,
+       so the bell stays inside the middle circle (r=313). Colours of the design system (palette of 2026-10-14):
+       primary #066849 (background and stitching), white, accent #FFDC5F (the bell) and ink #191E28. -->
+  <path d="M -60 250 Q 512 640 1084 250" fill="none" stroke="#FFFFFF" stroke-width="110"/>
+  <path d="M -60 217 Q 512 607 1084 217" fill="none" stroke="#066849" stroke-width="6" stroke-dasharray="20 16"/>
+  <path d="M -60 283 Q 512 673 1084 283" fill="none" stroke="#066849" stroke-width="6" stroke-dasharray="20 16"/>
+  <circle cx="512" cy="518.4" r="25.6" fill="none" stroke="#FFFFFF" stroke-width="14.08"/>
+  <circle cx="512" cy="672" r="128" fill="#FFDC5F"/>
+  <path d="M 389.12 656.64 Q 512 679.68 634.88 656.64" fill="none" stroke="#066849" stroke-width="11.52" stroke-linecap="round"/>
+  <line x1="465.92" y1="736" x2="558.08" y2="736" stroke="#191E28" stroke-width="25.6" stroke-linecap="round"/>
+</svg>

@@ -1,0 +1,70 @@
+---
+import TextPage from '../../layouts/TextPage.astro';
+import Contact from '../../components/Contact.astro';
+import { pageHref } from '../../i18n';
+---
+
+<TextPage
+  lang="ru"
+  page="support"
+  title="Поддержка"
+  description="Ответы на частые вопросы о Collarbell: напоминания на Android и iPhone, чтение фото с помощью AI, копия паспорта, удаление аккаунта."
+>
+  <p slot="intro">
+    Ответы на частые вопросы. Если вашего вопроса здесь нет, напишите разработчику&nbsp;— адрес в конце страницы.
+  </p>
+
+  <div class="faq">
+    <section class="card faq-item" aria-labelledby="android-reminders">
+      <h2 id="android-reminders">На Android не приходят напоминания</h2>
+      <p>
+        Сначала проверьте, что уведомления для Collarbell разрешены в настройках телефона. В приложении на экране
+        «Ещё → Уведомления» видно, доходят ли напоминания до этого телефона, и есть кнопка «Прислать проверочное
+        уведомление».
+      </p>
+      <p>
+        На Xiaomi (HyperOS, MIUI) и некоторых других телефонах система останавливает приложения в фоне, чтобы
+        экономить заряд. Разрешите Collarbell автозапуск и снимите для него ограничения экономии батареи (режим
+        «Нет ограничений»). На разных телефонах эти настройки называются немного по-разному.
+      </p>
+    </section>
+
+    <section class="card faq-item" aria-labelledby="iphone">
+      <h2 id="iphone">Есть ли напоминания на iPhone?</h2>
+      <p>Пока нет: напоминания на iPhone появятся позже. А до тех пор всё, что пора сделать, видно на экране «Сегодня».</p>
+    </section>
+
+    <section class="card faq-item" aria-labelledby="ai">
+      <h2 id="ai">AI долго читает фото или ошибся</h2>
+      <p>
+        Чтение фото занимает до минуты-двух. AI может неверно прочитать почерк, даты или цифры, поэтому сверьте
+        каждое поле черновика с оригиналом, прежде чем сохранить. Пока вы не сохранили черновик, ничего
+        не записывается.
+      </p>
+    </section>
+
+    <section class="card faq-item" aria-labelledby="passport">
+      <h2 id="passport">Цифровой паспорт&nbsp;— официальный документ?</h2>
+      <p>
+        Нет. Это копия для вас. Официальным документом остаётся бумажный паспорт&nbsp;— например, у ветеринара
+        или в поездке.
+      </p>
+    </section>
+
+    <section class="card faq-item" aria-labelledby="delete">
+      <h2 id="delete">Как удалить аккаунт?</h2>
+      <p>
+        Об этом&nbsp;— на странице <a href={pageHref('ru', 'deleteAccount')}>«Удаление аккаунта»</a>: что удаляется
+        и как попросить об удалении.
+      </p>
+    </section>
+
+    <section class="card faq-item" aria-labelledby="price">
+      <h2 id="price">Collarbell платный?</h2>
+      <p>Нет, пока идёт тестирование, он бесплатный.</p>
+    </section>
+  </div>
+
+  <h2 id="contact">Связаться</h2>
+  <Contact lang="ru" subject="Collarbell: вопрос" />
+</TextPage>

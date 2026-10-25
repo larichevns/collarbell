@@ -1,0 +1,172 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend (.NET)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: backend/global.json
+
+      - name: Install Aspire CLI
+        run: dotnet tool install -g Aspire.Cli
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --no-restore -c Release
+
+      - name: Test (Testcontainers Postgres)
+        run: dotnet test --no-build -c Release
+
+      - name: API contract is committed
+        run: git diff --exit-code -- ../contracts/openapi.json
+
+  mobile:
+    name: Mobile (Flutter)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.38.9
+          channel: stable
+          cache: true
+
+      - name: Design tokens are generated from design/tokens.json
+        run: |
+          python3 ../tools/gen_flutter_tokens.py
+          git diff --exit-code -- lib/theme/tokens.g.dart
+
+      # For every Russian text (app, web app, admin, site): tools/typograph.py.
+      - name: Short Russian words don't end a line
+        run: python3 ../tools/typograph.py --check
+
+      - name: Install packages
+        run: flutter pub get
+
+      - name: API client is generated from contracts/openapi.json
+        run: |
+          sh tool/generate_api.sh
+          # Intent-to-add makes new, untracked files show up in git diff too.
+          git add --intent-to-add lib/data/api/generated
+          git diff --exit-code -- lib/data/api/generated
+
+      - name: Analyze
+        run: flutter analyze
+
+      - name: Test
+        run: flutter test
+
+  landing:
+    name: Landing (Astro)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: landing
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: landing/package-lock.json
+
+      - name: Design tokens are generated from design/tokens.json
+        run: npm run check-tokens
+
+      - name: Install packages
+        run: npm ci
+
+      # The server builds it again for the web container (deploy/web.Dockerfile); a broken page fails here first.
+      - name: Build
+        run: npm run build
+
+  admin:
+    name: Admin (React)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: admin
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: admin/package-lock.json
+
+      # The same generator as the landing's (landing/tool/gen-tokens.mjs), written to admin/src/styles/tokens.css.
+      - name: Design tokens are generated from design/tokens.json
+        run: npm run check-tokens
+
+      - name: Install packages
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
+
+      # The server builds it again for the web container (deploy/web.Dockerfile); a broken build fails here first.
+      - name: Build
+        run: npm run build
+
+  web:
+    name: Web (React)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      # The same generator as the landing's (landing/tool/gen-tokens.mjs), written to web/src/styles/tokens.css.
+      - name: Design tokens are generated from design/tokens.json
+        run: npm run check-tokens
+
+      - name: Install packages
+        run: npm ci
+
+      # Like the app's Dart client: the types the web app calls the API with come from the committed contract.
+      - name: API types are generated from contracts/openapi.json
+        run: npm run generate-api -- --check
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
+
+      # The server builds it again for the web container (deploy/web.Dockerfile); a broken build fails here first.
+      - name: Build
+        run: npm run build

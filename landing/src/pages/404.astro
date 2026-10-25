@@ -1,0 +1,17 @@
+---
+// The page nginx shows for any unknown address (error_page 404 /404.html), in English and, below, in Russian.
+import Base from '../layouts/Base.astro';
+import { pageHref } from '../i18n';
+---
+
+<Base lang="en" title="Page not found — Collarbell" description="There is no page at this address.">
+  <div class="wrap not-found">
+    <p class="not-found-code" aria-hidden="true">404</p>
+    <h1 class="page-title">Page not found</h1>
+    <p class="muted">There’s no page at this address. The link may be old or have a typo.</p>
+    <a class="button button--primary" href={pageHref('en', 'home')}>Go to the home page</a>
+    <div class="not-found-other" lang="ru">
+      <p>Страница не найдена. <a href={pageHref('ru', 'home')}>На главную</a></p>
+    </div>
+  </div>
+</Base>

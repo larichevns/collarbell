@@ -1,0 +1,22 @@
+<Project Sdk="Aspire.AppHost.Sdk/13.6.0">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <!-- Requires the Aspire CLI: dotnet tool install -g Aspire.Cli -->
+    <AspireUseCliBundle>true</AspireUseCliBundle>
+    <!-- MSBuild does not expand "~" in PATH, so point at the global tool directly when it is there. -->
+    <AspireCliPath Condition="'$(AspireCliPath)' == '' and Exists('$(HOME)/.dotnet/tools/aspire')">$(HOME)/.dotnet/tools/aspire</AspireCliPath>
+    <AspireCliPath Condition="'$(AspireCliPath)' == '' and Exists('$(USERPROFILE)\.dotnet\tools\aspire.exe')">$(USERPROFILE)\.dotnet\tools\aspire.exe</AspireCliPath>
+    <UserSecretsId>415c6505-9355-4c9f-9e87-3b8dabfb7e8c</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Aspire.Hosting.PostgreSQL" />
+    <PackageReference Include="CommunityToolkit.Aspire.Hosting.SeaweedFS" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../Collarbell.Api/Collarbell.Api.csproj" />
+  </ItemGroup>
+
+</Project>

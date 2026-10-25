@@ -1,0 +1,76 @@
+---
+// The terms of use. Change them together with src/pages/ru/terms.astro and the date in src/i18n.ts.
+import TextPage from '../layouts/TextPage.astro';
+import Contact from '../components/Contact.astro';
+---
+
+<TextPage
+  lang="en"
+  page="terms"
+  title="Terms of use"
+  description="The terms for using Collarbell while it is in early testing."
+  dated
+>
+  <p slot="intro">
+    These terms apply to the Collarbell app while it is in early testing. By using Collarbell, you agree to
+    them.
+  </p>
+
+  <h2 id="what-it-is">What Collarbell is</h2>
+  <p>
+    A personal tool for keeping track of your pets’ care: records, plans and reminders. It is in early testing,
+    so some things may not work perfectly yet.
+  </p>
+  <p>You must be 18 or older to use Collarbell.</p>
+
+  <h2 id="price">Free during testing</h2>
+  <p>Collarbell is free while it is being tested.</p>
+
+  <h2 id="as-is">Provided as is</h2>
+  <p>
+    Collarbell is provided “as is”, without any warranty. It may contain errors, and what it can do may change.
+  </p>
+
+  <h2 id="not-advice">Not veterinary advice</h2>
+  <p>
+    Collarbell helps you keep records and reminds you of things; it doesn’t give veterinary advice. Always
+    follow your vet’s advice, and contact a vet if your pet seems unwell.
+  </p>
+
+  <h2 id="passport">The passport copy is not an official document</h2>
+  <p>
+    The digital passport in Collarbell is a copy for your own reference. The paper passport or certificate stays
+    the official document, for example at the vet or at a border.
+  </p>
+
+  <h2 id="reminders">Reminders can be late</h2>
+  <p>
+    Reminders depend on your phone and its settings, the network and third-party services such as Firebase.
+    They may arrive late or not at all. Don’t rely on them alone, especially for anything important to your
+    pet’s health.
+  </p>
+
+  <h2 id="ai">AI can be wrong</h2>
+  <p>AI can misread a photo. Check every draft against the original before you save it.</p>
+
+  <h2 id="content">Your content</h2>
+  <p>
+    What you add to Collarbell stays yours. You are responsible for having the right to upload it, such as
+    photos and documents.
+  </p>
+
+  <h2 id="fair-use">Fair use</h2>
+  <p>
+    Don’t misuse Collarbell: don’t try to break or overload it, to get into other people’s data, or to use it for
+    anything unlawful.
+  </p>
+
+  <h2 id="changes">Changes, and the end of the service</h2>
+  <p>
+    During testing, Collarbell may change, and the service may pause or stop. These terms may change too: the
+    new version is published on this page with its date.
+  </p>
+
+  <h2 id="contact">Contact</h2>
+  <Contact lang="en" subject="Collarbell" />
+</TextPage>

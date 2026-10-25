@@ -1,0 +1,3 @@
+# Installed packages and the built app.
+node_modules/
+dist/

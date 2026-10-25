@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <!-- The whole icon on one square (iOS rounds the corners itself; old Android gets it cut to a circle):
+       the primary background with foreground.svg on top. -->
+  <rect width="1024" height="1024" fill="#066849"/>
+  <image href="foreground.svg" width="1024" height="1024"/>
+</svg>

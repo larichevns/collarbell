@@ -1,0 +1,938 @@
+/* Collarbell's site styles, on top of the design tokens (tokens.css, generated from design/tokens.json).
+   The same rules as the app: white pages and a blue-grey interface; green for actions and "done" (the bright primary
+   as a fill under on-primary words, primary-text for green words, icons and thin lines); yellow (accent) for "next"
+   and "soon", always as a fill under dark text (a yellow pill, a cream panel with a yellow border) and never as the
+   colour of text; red (danger) only for "overdue". Cards are white with a thin line and a soft shadow; everything you
+   tap is a pill, and every button is 44 px high (control-md); outlines are 1.5 px (border-width) of line-strong. Text
+   sizes and weights come from the type scale: 700 for headings and the main (green) button, 500 for other buttons and
+   labels, 400 for the rest (no 600). Dark mode follows the system (prefers-color-scheme in tokens.css). */
+
+/* ------------------------------------------------------------------ base -- */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  color-scheme: light dark;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: var(--body-size);
+  line-height: var(--body-line);
+  font-weight: 400;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-wrap: break-word;
+}
+
+main {
+  flex: 1 0 auto;
+}
+
+img,
+svg {
+  display: block;
+  max-width: 100%;
+}
+
+img {
+  height: auto;
+}
+
+h1,
+h2,
+h3,
+p,
+ul,
+ol,
+figure {
+  margin: 0;
+}
+
+h1,
+h2,
+h3 {
+  text-wrap: balance;
+}
+
+p,
+li {
+  text-wrap: pretty;
+}
+
+/* Long words never push the page sideways on a 360 px phone. A word too long for a heading line
+   («конфиденциальности») carries a soft hyphen where it may break. */
+h1,
+h2 {
+  hyphens: manual;
+}
+
+a {
+  color: var(--primary-text);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.2em;
+}
+
+a:hover {
+  color: var(--primary-text);
+  text-decoration-thickness: 2px;
+}
+
+/* Keyboard focus: a gap and 2 px of primary-text, like the app's focus-ring token. */
+:focus-visible {
+  outline: 2px solid var(--primary-text);
+  outline-offset: 2px;
+}
+
+::selection {
+  background: var(--primary-soft);
+  color: var(--ink);
+}
+
+.visually-hidden {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.skip-link {
+  position: absolute;
+  top: var(--space-2);
+  left: var(--space-2);
+  z-index: 10;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-full);
+  background: var(--primary);
+  color: var(--on-primary);
+  font-weight: 700;
+  text-decoration: none;
+  transform: translateY(-200%);
+}
+
+.skip-link:focus {
+  transform: none;
+  color: var(--on-primary);
+}
+
+/* ---------------------------------------------------------------- layout -- */
+
+.wrap {
+  width: 100%;
+  max-width: 1120px;
+  margin-inline: auto;
+  padding-inline: var(--space-4);
+}
+
+@media (min-width: 600px) {
+  .wrap {
+    padding-inline: var(--space-6);
+  }
+}
+
+@media (min-width: 960px) {
+  .wrap {
+    padding-inline: var(--space-8);
+  }
+}
+
+.section {
+  padding-block: 64px;
+}
+
+.section--tinted {
+  background: var(--sunken);
+}
+
+@media (min-width: 900px) {
+  .section {
+    padding-block: 96px;
+  }
+}
+
+.section-head {
+  display: grid;
+  gap: var(--space-3);
+  max-width: 720px;
+  margin-bottom: var(--space-8);
+}
+
+.eyebrow {
+  color: var(--primary-text);
+  font-size: 13px;
+  line-height: 16px;
+  font-weight: var(--title-weight);
+  letter-spacing: var(--overline-tracking);
+  text-transform: uppercase;
+}
+
+.h2 {
+  font-family: var(--display-lg-family);
+  font-size: clamp(1.625rem, 1.2rem + 1.6vw, 2.25rem);
+  line-height: 1.2;
+  font-weight: var(--display-lg-weight);
+  letter-spacing: var(--display-lg-tracking);
+}
+
+.h3 {
+  font-size: var(--title-size);
+  line-height: var(--title-line);
+  font-weight: var(--title-weight);
+  letter-spacing: var(--title-tracking);
+}
+
+.lead {
+  font-size: 18px;
+  line-height: 28px;
+}
+
+.muted {
+  color: var(--ink-muted);
+}
+
+.small {
+  font-size: 15px;
+  line-height: 22px;
+}
+
+/* ---------------------------------------------------------------- header -- */
+
+.site-header {
+  border-bottom: 1px solid var(--line);
+  background: var(--paper);
+}
+
+.header-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 64px;
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: var(--control-md);
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 19px;
+  line-height: 1;
+  font-weight: var(--title-weight);
+  letter-spacing: var(--title-tracking);
+  text-decoration: none;
+}
+
+.brand:hover {
+  color: var(--ink);
+}
+
+.brand img {
+  width: 32px;
+  height: 32px;
+  flex: none;
+}
+
+.header-nav {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-left: auto;
+}
+
+.pill-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: var(--control-md);
+  padding-inline: var(--space-3);
+  border-radius: var(--radius-full);
+  color: var(--ink);
+  font-size: var(--label-size);
+  line-height: var(--label-line);
+  font-weight: var(--label-weight);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.pill-link:hover,
+.pill-link[aria-current="page"] {
+  background: var(--sunken);
+  color: var(--ink);
+}
+
+.pill-link svg {
+  width: 20px;
+  height: 20px;
+  flex: none;
+  color: var(--ink-muted);
+}
+
+/* On a phone the header keeps the logo and the language; the pages are in the footer. */
+.header-nav .pill-link--wide {
+  display: none;
+}
+
+@media (min-width: 640px) {
+  .header-nav .pill-link--wide {
+    display: inline-flex;
+  }
+}
+
+/* --------------------------------------------------------------- buttons -- */
+
+/* Every button has one height, control-md (44 px). Side by side they are 8 px apart, one under another 12 px. */
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: var(--control-md);
+  padding-inline: var(--space-5);
+  border: var(--border-width) solid transparent;
+  border-radius: var(--radius-full);
+  font-size: var(--label-size);
+  line-height: var(--label-line);
+  font-weight: var(--label-weight);
+  text-decoration: none;
+}
+
+.button svg {
+  width: 20px;
+  height: 20px;
+  flex: none;
+}
+
+/* The main action: white words on the bright green, bold (the owner's choice: white on #00B53F is only 2.7:1, the
+   bold letters make up for it). Every other button keeps the label weight. */
+.button--primary {
+  background: var(--primary);
+  color: var(--on-primary);
+  font-weight: 700;
+}
+
+.button--primary:hover {
+  background: var(--primary-strong);
+  color: var(--on-primary);
+}
+
+/* Outlined: 1.5 px of line-strong, ink text. */
+.button--secondary {
+  border-color: var(--line-strong);
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.button--secondary:hover {
+  background: var(--sunken);
+  color: var(--ink);
+}
+
+/* "In early testing": a status tag like the app's "soon", a yellow pill with dark text and an icon (yellow text on
+   white can't be read). */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  justify-self: start;
+  padding: 6px 14px 6px 10px;
+  border-radius: var(--radius-full);
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: var(--body-sm-size);
+  line-height: var(--body-sm-line);
+  font-weight: var(--label-weight);
+}
+
+.badge svg {
+  flex: none;
+  width: 18px;
+  height: 18px;
+}
+
+/* ------------------------------------------------------------------ hero -- */
+
+.hero {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  padding-block: 40px 64px;
+}
+
+.hero-grid {
+  display: grid;
+  gap: 48px;
+  align-items: center;
+}
+
+.hero-text {
+  display: grid;
+  gap: var(--space-6);
+}
+
+.hero h1 {
+  font-family: var(--display-xl-family);
+  font-size: clamp(2rem, 1.2rem + 3.6vw, 3.5rem);
+  line-height: 1.1;
+  font-weight: var(--display-xl-weight);
+  letter-spacing: var(--display-xl-tracking);
+}
+
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3) var(--space-2);
+}
+
+@media (min-width: 900px) {
+  .hero {
+    padding-block: 72px 96px;
+  }
+
+  .hero-grid {
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+    gap: 64px;
+  }
+
+  .hero .lead {
+    font-size: 20px;
+    line-height: 30px;
+  }
+}
+
+/* ----------------------------------------------------------------- phone -- */
+
+/* A plain Android phone around an app screenshot (390 x 844 pt, shot at 2x). The screenshots have no status
+   bar, so the screen gets a thin white one on top, with the camera hole in it. The frame is the palette's darkest
+   blue-grey and the screen white in both themes: the screenshots are of the app's light theme. */
+.phone {
+  --frame: #191e28;
+  --bar: 20px;
+  --hole: 9px;
+  width: 100%;
+  max-width: 290px;
+  margin-inline: auto;
+  padding: 9px;
+  border-radius: 44px;
+  background: var(--frame);
+  box-shadow: 0 0 0 1px var(--line), var(--shadow-lg);
+}
+
+.phone-screen {
+  position: relative;
+  overflow: hidden;
+  padding-top: var(--bar);
+  border-radius: 35px;
+  background: #ffffff;
+}
+
+.phone-screen::before {
+  content: "";
+  position: absolute;
+  top: calc((var(--bar) - var(--hole)) / 2 + 1px);
+  left: 50%;
+  width: var(--hole);
+  height: var(--hole);
+  margin-left: calc(var(--hole) / -2);
+  border-radius: 50%;
+  background: var(--frame);
+}
+
+.phone img {
+  width: 100%;
+}
+
+.hero .phone {
+  max-width: 300px;
+}
+
+@media (max-width: 420px) {
+  .phone {
+    --bar: 18px;
+    --hole: 8px;
+    max-width: 264px;
+    padding: 8px;
+    border-radius: 40px;
+  }
+
+  .phone-screen {
+    border-radius: 32px;
+  }
+}
+
+/* Two phones side by side, the second a little lower. */
+.phones {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  gap: var(--space-4);
+}
+
+.phones .phone {
+  --bar: 17px;
+  --hole: 8px;
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: 260px;
+  margin-inline: 0;
+}
+
+.phones .phone + .phone {
+  margin-top: 48px;
+}
+
+@media (max-width: 420px) {
+  .phones {
+    gap: var(--space-3);
+  }
+
+  .phones .phone {
+    --bar: 11px;
+    --hole: 5px;
+    padding: 5px;
+    border-radius: 26px;
+  }
+
+  .phones .phone-screen {
+    border-radius: 21px;
+  }
+}
+
+/* ------------------------------------------------------------- features -- */
+
+.features {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr));
+  gap: var(--space-4);
+  padding: 0;
+  list-style: none;
+}
+
+.card {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
+}
+
+/* On a phone the icon sits beside the text, like a row in the app; from 600 px it sits on top. */
+.feature,
+.step {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr);
+  align-content: start;
+  gap: var(--space-1) var(--space-4);
+  padding: var(--space-5);
+}
+
+.feature .icon-well,
+.step .icon-well {
+  grid-row: 1 / span 2;
+}
+
+.feature p,
+.step p {
+  color: var(--ink-muted);
+}
+
+@media (min-width: 600px) {
+  .feature,
+  .step {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-3);
+    padding: var(--space-6);
+  }
+
+  .feature .icon-well,
+  .step .icon-well {
+    grid-row: auto;
+  }
+}
+
+/* The app's round icon well: sunken circle, green icon. */
+.icon-well {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--sunken);
+  color: var(--primary-text);
+}
+
+.icon-well svg {
+  width: 24px;
+  height: 24px;
+}
+
+.section--tinted .icon-well {
+  background: var(--primary-soft);
+}
+
+/* ------------------------------------------------------------- showcase -- */
+
+.showcases {
+  display: grid;
+  gap: 88px;
+}
+
+.showcase {
+  display: grid;
+  gap: 40px;
+  align-items: center;
+}
+
+.showcase-text {
+  display: grid;
+  gap: var(--space-4);
+  max-width: 540px;
+}
+
+@media (min-width: 900px) {
+  .showcases {
+    gap: 120px;
+  }
+
+  .showcase {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 72px;
+  }
+
+  .showcase--media-first .showcase-media {
+    order: -1;
+  }
+}
+
+.checks {
+  display: grid;
+  gap: var(--space-3);
+  padding: 0;
+  list-style: none;
+}
+
+.checks li {
+  display: flex;
+  gap: var(--space-3);
+}
+
+.checks svg {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  color: var(--primary-text);
+}
+
+/* ---------------------------------------------------------------- notice -- */
+
+/* Like the app's Notice: a soft blue-grey panel with an icon. A warning is cream with a 1.5 px yellow border, its
+   icon and words in ink, as in the app's AI screen. */
+.notice {
+  display: flex;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: var(--border-width) solid transparent;
+  border-radius: var(--radius-md);
+  background: var(--sunken);
+}
+
+.notice > svg {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  color: var(--ink-muted);
+}
+
+.section--tinted .notice:not(.notice--warning) {
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+
+.notice--warning {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.notice--warning > svg {
+  color: var(--ink);
+}
+
+.notice p + p {
+  margin-top: var(--space-2);
+}
+
+/* ----------------------------------------------------------------- steps -- */
+
+.steps {
+  display: grid;
+  gap: var(--space-4);
+  margin-bottom: var(--space-6);
+  padding: 0;
+  list-style: none;
+}
+
+@media (min-width: 900px) {
+  .steps {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+/* --------------------------------------------------------- two columns -- */
+
+.columns {
+  display: grid;
+  gap: var(--space-6);
+}
+
+@media (min-width: 900px) {
+  .columns {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.panel {
+  display: grid;
+  align-content: start;
+  gap: var(--space-4);
+  padding: var(--space-6);
+}
+
+@media (min-width: 600px) {
+  .panel {
+    padding: var(--space-8);
+  }
+}
+
+/* What is coming: each icon on a yellow circle, because yellow means "soon" in Collarbell (and yellow on white
+   can't be read, so the icon is dark on the yellow). */
+.coming {
+  display: grid;
+  gap: var(--space-3);
+  padding: 0;
+  list-style: none;
+}
+
+.coming li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.coming svg {
+  flex: none;
+  box-sizing: border-box;
+  width: 32px;
+  height: 32px;
+  padding: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+/* ---------------------------------------------------------------- footer -- */
+
+/* White, under a line: the home page ends with a blue-grey section, and the footer stays apart from it. */
+.site-footer {
+  margin-top: 64px;
+  padding-block: 40px 48px;
+  border-top: 1px solid var(--line);
+  background: var(--paper);
+}
+
+.home .site-footer {
+  margin-top: 0;
+}
+
+/* The name and the line about Collarbell on top, the links under them: beside the name the links don't fit one
+   row even on a wide screen. */
+.footer-grid {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.footer-brand {
+  display: grid;
+  gap: var(--space-2);
+  justify-items: start;
+}
+
+.footer-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-2);
+  margin: 0 0 0 calc(-1 * var(--space-3));
+  padding: 0;
+  list-style: none;
+}
+
+
+/* ----------------------------------------------------- text pages (legal) -- */
+
+.page {
+  padding-block: 40px 0;
+}
+
+@media (min-width: 900px) {
+  .page {
+    padding-block: 64px 0;
+  }
+}
+
+.prose {
+  max-width: 720px;
+}
+
+.page-title {
+  font-family: var(--display-lg-family);
+  font-size: clamp(1.625rem, 1.15rem + 2.2vw, 2.625rem);
+  line-height: 1.15;
+  font-weight: var(--display-lg-weight);
+  letter-spacing: var(--display-lg-tracking);
+}
+
+.page-intro {
+  display: grid;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+  padding-bottom: var(--space-6);
+  border-bottom: 1px solid var(--line);
+}
+
+.prose h2 {
+  margin-top: var(--space-12);
+  font-size: 22px;
+  line-height: 28px;
+  font-weight: var(--title-weight);
+  letter-spacing: var(--title-tracking);
+}
+
+.prose h3 {
+  margin-top: var(--space-6);
+  font-size: var(--subtitle-size);
+  line-height: var(--subtitle-line);
+  font-weight: var(--title-weight);
+  letter-spacing: var(--subtitle-tracking);
+}
+
+.prose p,
+.prose ul,
+.prose ol,
+.prose .notice,
+.prose .contact {
+  margin-top: var(--space-3);
+}
+
+.prose ul,
+.prose ol {
+  padding-left: 1.4em;
+}
+
+.prose li + li {
+  margin-top: var(--space-2);
+}
+
+.prose .contact p,
+.prose .notice p:first-of-type {
+  margin-top: 0;
+}
+
+.prose li::marker {
+  color: var(--ink-muted);
+}
+
+.prose strong {
+  font-weight: 700;
+}
+
+/* Questions on the support page. */
+.faq {
+  display: grid;
+  gap: var(--space-4);
+  margin-top: var(--space-8);
+}
+
+.faq-item {
+  padding: var(--space-6);
+}
+
+.prose .faq-item h2 {
+  margin-top: 0;
+  font-size: var(--title-size);
+  line-height: var(--title-line);
+}
+
+/* -------------------------------------------------------------- contact -- */
+
+.contact {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
+}
+
+.contact svg {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  color: var(--primary-text);
+}
+
+.contact a {
+  font-weight: var(--label-weight);
+}
+
+/* ------------------------------------------------------------------ 404 -- */
+
+.not-found {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-4);
+  padding-block: 72px 24px;
+  text-align: center;
+}
+
+.not-found-code {
+  font-family: var(--display-xl-family);
+  font-size: var(--display-xl-size);
+  line-height: var(--display-xl-line);
+  font-weight: var(--display-xl-weight);
+  letter-spacing: var(--display-xl-tracking);
+  color: var(--primary-text);
+}
+
+.not-found .button {
+  margin-top: var(--space-2);
+}
+
+.not-found-other {
+  margin-top: var(--space-8);
+  padding-top: var(--space-6);
+  border-top: 1px solid var(--line);
+}

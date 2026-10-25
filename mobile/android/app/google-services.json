@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "237266630419",
+    "project_id": "collarbell-3e2b9",
+    "storage_bucket": "collarbell-3e2b9.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:237266630419:android:bfdad69ed6f78c6b5c4ce6",
+        "android_client_info": {
+          "package_name": "com.collarbell.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCtTRBV_a78oDKu6xxZMw5zb2uE-LnVwE8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

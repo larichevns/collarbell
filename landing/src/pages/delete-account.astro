@@ -1,0 +1,73 @@
+---
+// How to delete a Collarbell account: the page Google Play asks for. The app's own "Delete account" (More) comes
+// first; the e-mail way stays for people without the app. Keep it in step with src/pages/ru/delete-account.astro and
+// with what the server does (backend/src/Collarbell.Api/Modules/Identity/AccountDeletion.cs).
+import TextPage from '../layouts/TextPage.astro';
+import Contact from '../components/Contact.astro';
+import { pageHref } from '../i18n';
+---
+
+<TextPage
+  lang="en"
+  page="deleteAccount"
+  title="Delete your Collarbell account"
+  description="How to delete your Collarbell account and its data, what is deleted, what happens to shared households, and how long it takes."
+>
+  <p slot="intro" class="lead">You can delete your Collarbell account and all its data at any time, right in the app.</p>
+
+  <h2 id="how">In the app</h2>
+  <ol>
+    <li>Open Collarbell and go to <strong>More → Delete account</strong>.</li>
+    <li>The app shows what will happen to each of your households (see below).</li>
+    <li>
+      Type your password and confirm. The account is deleted at once; this can’t be undone. If something changed in
+      your households meanwhile (someone joined, for example), nothing is deleted and the app shows you the new picture.
+    </li>
+  </ol>
+  <p>
+    Want a copy first? <strong>More → Download my data</strong> gives you a ZIP file with everything: your account,
+    your households, their photos and scans.
+  </p>
+
+  <h2 id="ask">Without the app</h2>
+  <p>If you can’t use the app, for example because you no longer have the phone, ask for deletion by e-mail:</p>
+  <ol>
+    <li>Send a deletion request to the contact address below.</li>
+    <li>Send it from the e-mail address you use to sign in to Collarbell, so it is clear the account is yours.</li>
+    <li>The account and its data are deleted within 30 days of your request.</li>
+  </ol>
+  <Contact lang="en" subject="Delete my Collarbell account" />
+
+  <h2 id="what">What is deleted</h2>
+  <ul>
+    <li>Your Collarbell account: your e-mail address, your name, your settings and your phones’ push addresses.</li>
+    <li>Your sign-in account in Firebase Authentication: the e-mail address and password you sign in with.</li>
+    <li>The record of what your apps did in the last 7 days.</li>
+    <li>
+      Every household where you are the only person, or where only helpers would remain: its pets and everything
+      about them (care plans and records, vet visits, feeding schedules and marks, supplies, passport details) and
+      the photos and documents uploaded there.
+    </li>
+  </ul>
+
+  <h2 id="shared">Households you share</h2>
+  <p>A household with other people in it isn’t yours alone, so it stays with them:</p>
+  <ul>
+    <li>
+      the records you added and your feeding marks stay, without your name as their author; what is written in them,
+      for example the owner’s details in a pet passport, stays as it is;
+    </li>
+    <li>if you were its only owner, the member who joined it first becomes the owner.</li>
+  </ul>
+  <p>
+    Helpers (a sitter, a colleague) don’t keep a household on their own: if only helpers would remain, the household
+    is deleted, and they lose it.
+  </p>
+
+  <h2 id="after">What remains, and for how long</h2>
+  <p>Your data also leaves the nightly backups within 14 days.</p>
+  <p>
+    Photos you already sent to Gemini to be read with AI were handled under Google’s terms (see the{' '}
+    <a href={`${pageHref('en', 'privacy')}#ai`}>privacy policy</a>); deleting the account can’t recall them.
+  </p>
+</TextPage>

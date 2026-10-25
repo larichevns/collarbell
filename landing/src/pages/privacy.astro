@@ -1,0 +1,152 @@
+---
+// The privacy policy. It must say only what is true of the app today; when that changes, update the text
+// here and in src/pages/ru/privacy.astro, and the date in src/i18n.ts (LEGAL_EFFECTIVE).
+import TextPage from '../layouts/TextPage.astro';
+import Contact from '../components/Contact.astro';
+import Icon from '../components/Icon.astro';
+import { pageHref } from '../i18n';
+---
+
+<TextPage
+  lang="en"
+  page="privacy"
+  title="Privacy policy"
+  description="What the Collarbell app collects, why, where it is kept, and how to see, correct or delete it."
+  dated
+>
+  <p slot="intro">
+    This policy explains in plain words what the Collarbell app and this website collect, why, where it is
+    kept and what you can do about it. Collarbell is in early testing, and the policy describes the app as it
+    works today.
+  </p>
+
+  <h2 id="controller">Who is responsible</h2>
+  <p>
+    Collarbell is made by an independent developer, a private individual, who is responsible for your data
+    (the “controller”). You can reach the developer here:
+  </p>
+  <Contact lang="en" subject="Collarbell privacy" />
+
+  <h2 id="account">Your account</h2>
+  <p>
+    You sign in with your e-mail address and a password through Google Firebase Authentication. Firebase keeps
+    the password; the developer never sees it. Collarbell’s server stores your Firebase user ID and your e-mail
+    address.
+  </p>
+
+  <h2 id="your-data">What you add to the app</h2>
+  <p>Collarbell stores what you enter, so that it can show it to you and remind you of it:</p>
+  <ul>
+    <li>
+      your pets: name, species, breed, sex, birth date, coat, microchip and other identifiers, and passport
+      details;
+    </li>
+    <li>vaccinations, parasite treatments and other care records;</li>
+    <li>vet visits and notes;</li>
+    <li>feeding schedules and “Fed” marks;</li>
+    <li>supplies and purchases;</li>
+    <li>
+      photos and documents you upload. The server re-encodes images and removes their metadata, such as the
+      place where a photo was taken;
+    </li>
+    <li>app settings: language and time zone.</li>
+  </ul>
+
+  <h2 id="sharing">Shared groups</h2>
+  <p>
+    Pets and their records belong to a group («My home», «Office»). If you invite someone into your group, or join
+    someone else’s, everyone in the group sees its pets, records, documents and supplies, and each other’s name and
+    e-mail. Marks show who made them, e.g. who fed the cat. A helper sees everything and can only mark things done.
+  </p>
+
+  <h2 id="notifications">Reminders</h2>
+  <p>
+    Push notifications are sent through Firebase Cloud Messaging, a Google service. For this, the server stores
+    your device’s push token.
+  </p>
+
+  <h2 id="storage">Where your data is kept</h2>
+  <p>
+    On the developer’s server in Germany (EU), at the hosting provider Contabo. Backups are made every night on
+    the same server and kept for 14 days.
+  </p>
+  <p>
+    The server’s web log records each request’s IP address, time and address. It is kept for 14 days, for
+    security and troubleshooting.
+  </p>
+  <p>
+    Firebase Authentication, Firebase Cloud Messaging and Gemini (see below) are Google services: Google
+    processes the data they receive on its own servers, which may be outside the EU.
+  </p>
+
+  <h2 id="support-log">Support log</h2>
+  <p>
+    To help when something goes wrong, the app tells the server which screens were opened, a few actions (such as
+    “Fed”) and the errors you saw, never what you typed. The server also notes each request it gets: the address,
+    the answer and the time, without the contents. Only the developer sees this, and it is kept for 7 days.
+  </p>
+
+  <h2 id="ai">Reading photos with AI</h2>
+  <p>
+    When you choose to read a photo with AI (a passport page, a document from the vet or a product package),
+    that photo is sent to Google’s Gemini API. Nothing is sent to AI unless you start a scan yourself.
+  </p>
+  <div class="notice notice--warning">
+    <Icon name="warning" />
+    <p>
+      During testing, Collarbell uses the free tier of Gemini. Under it, Google may use the content to improve
+      its products, and human reviewers may see it. So please don’t scan anything you don’t want to share.
+    </p>
+  </div>
+
+  <h2 id="barcodes">Looking up barcodes</h2>
+  <p>
+    When you scan a product’s barcode, only the barcode number is sent to Open Pet Food Facts and UPCitemdb, to
+    find the product.
+  </p>
+  <p>
+    The barcode and document scanners work on your phone with Google ML Kit. The camera images stay on the phone,
+    but ML Kit may send Google technical information: the phone model, the app version and how well the scanner
+    worked.
+  </p>
+
+  <h2 id="what-it-doesnt-do">What Collarbell doesn’t do</h2>
+  <ul>
+    <li>It shows no ads.</li>
+    <li>It doesn’t sell your data.</li>
+    <li>
+      It has no analytics, advertising or tracking tools. Of Firebase, the app uses only Authentication and
+      Cloud Messaging.
+    </li>
+  </ul>
+  <p>This website sets no cookies, has no analytics and loads nothing from other sites.</p>
+
+  <h2 id="retention">How long data is kept</h2>
+  <p>
+    Until you delete it. Whatever you delete, including your whole account, also leaves the backups within 14
+    days.
+  </p>
+  <p>
+    A household you share with others stays with them when you delete your account: the records and feeding marks
+    you made there stay, without your name as their author, and what is written in them (for example the owner’s
+    details in a pet passport) stays as it is.
+  </p>
+  <p><a href={pageHref('en', 'deleteAccount')}>How to delete your account</a></p>
+
+  <h2 id="rights">Your rights</h2>
+  <p>
+    In the app, <strong>More → Download my data</strong> gives you a copy of everything Collarbell keeps about you,
+    as a ZIP file that other programs can read, and <strong>More → Delete account</strong> deletes it. You can
+    correct your data in the app too. For anything else, write to the developer at the contact address above.
+  </p>
+  <p>You can also complain to a data protection authority.</p>
+
+  <h2 id="children">Children</h2>
+  <p>
+    Collarbell is for adults: you must be 18 or older to use it. This is also a condition of the AI service
+    (Google Gemini) that reads photos.
+  </p>
+
+  <h2 id="changes">Changes to this policy</h2>
+  <p>When this policy changes, the new version is published on this page with its date.</p>
+</TextPage>

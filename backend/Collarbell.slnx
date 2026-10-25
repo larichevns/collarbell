@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Collarbell.Api/Collarbell.Api.csproj" />
+    <Project Path="src/Collarbell.AppHost/Collarbell.AppHost.csproj" />
+    <Project Path="src/Collarbell.ServiceDefaults/Collarbell.ServiceDefaults.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Collarbell.Api.Tests/Collarbell.Api.Tests.csproj" />
+  </Folder>
+</Solution>

@@ -1,0 +1,69 @@
+---
+import TextPage from '../layouts/TextPage.astro';
+import Contact from '../components/Contact.astro';
+import { pageHref } from '../i18n';
+---
+
+<TextPage
+  lang="en"
+  page="support"
+  title="Support"
+  description="Answers to common questions about Collarbell: reminders on Android and iPhone, AI reading, the passport copy, deleting your account."
+>
+  <p slot="intro">
+    Answers to common questions. If yours isn’t here, write to the developer: the contact is at the end of the
+    page.
+  </p>
+
+  <div class="faq">
+    <section class="card faq-item" aria-labelledby="android-reminders">
+      <h2 id="android-reminders">Reminders don’t arrive on my Android phone</h2>
+      <p>
+        First, check that notifications are allowed for Collarbell in the phone’s settings. In the app, More →
+        Notifications shows whether reminders reach this phone and has a “Send a test notification” button.
+      </p>
+      <p>
+        On Xiaomi (HyperOS, MIUI) and some other phones, the system stops apps in the background to save battery.
+        Allow Autostart for Collarbell and turn off battery restrictions for it (set battery saving to “No
+        restrictions”). These settings are named a little differently on different phones.
+      </p>
+    </section>
+
+    <section class="card faq-item" aria-labelledby="iphone">
+      <h2 id="iphone">Are there reminders on iPhone?</h2>
+      <p>Not yet: reminders on iPhone are coming later. Until then, everything due is on the Today screen.</p>
+    </section>
+
+    <section class="card faq-item" aria-labelledby="ai">
+      <h2 id="ai">AI takes long to read a photo, or gets something wrong</h2>
+      <p>
+        Reading a photo takes up to a minute or two. AI can misread handwriting, dates or numbers, so check every
+        field of the draft against the original before you save it. Nothing is saved until you do.
+      </p>
+    </section>
+
+    <section class="card faq-item" aria-labelledby="passport">
+      <h2 id="passport">Is the digital passport an official document?</h2>
+      <p>
+        No. It is a copy for your own use. The paper passport stays the official document, for example at the vet
+        or when travelling.
+      </p>
+    </section>
+
+    <section class="card faq-item" aria-labelledby="delete">
+      <h2 id="delete">How do I delete my account?</h2>
+      <p>
+        See <a href={pageHref('en', 'deleteAccount')}>Delete your account</a>: what is deleted and how to ask for
+        it.
+      </p>
+    </section>
+
+    <section class="card faq-item" aria-labelledby="price">
+      <h2 id="price">Is Collarbell free?</h2>
+      <p>Yes, while it is in testing.</p>
+    </section>
+  </div>
+
+  <h2 id="contact">Contact</h2>
+  <Contact lang="en" subject="Collarbell support" />
+</TextPage>

@@ -1,0 +1,33 @@
+---
+// A page of text: privacy policy, terms of use, account deletion, support. The heading and the intro come
+// first; the page's sections go in the default slot.
+import Base from './Base.astro';
+import { LEGAL_EFFECTIVE, type Lang, type PageKey } from '../i18n';
+
+interface Props {
+  lang: Lang;
+  page: PageKey;
+  /** The page's name; the browser tab shows it with " — Collarbell". */
+  title: string;
+  /** The heading, when it differs from the title, e.g. with a soft hyphen in a long word. */
+  heading?: string;
+  description: string;
+  /** Show the effective date of the legal texts under the heading. */
+  dated?: boolean;
+}
+
+const { lang, page, title, heading = title, description, dated = false } = Astro.props;
+---
+
+<Base lang={lang} page={page} title={`${title} — Collarbell`} description={description}>
+  <div class="page wrap">
+    <article class="prose">
+      <h1 class="page-title">{heading}</h1>
+      <div class="page-intro">
+        {dated && <p class="muted small">{LEGAL_EFFECTIVE[lang]}</p>}
+        <slot name="intro" />
+      </div>
+      <slot />
+    </article>
+  </div>
+</Base>

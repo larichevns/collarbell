@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <!-- The themed icon of Android 13+: the same shapes in one colour (Android tints them); the bell's seam and
+       slot are cut out. -->
+  <defs>
+    <mask id="cuts">
+      <rect width="1024" height="1024" fill="#FFFFFF"/>
+      <path d="M 389.12 656.64 Q 512 679.68 634.88 656.64" fill="none" stroke="#000000" stroke-width="16" stroke-linecap="round"/>
+      <line x1="465.92" y1="736" x2="558.08" y2="736" stroke="#000000" stroke-width="28" stroke-linecap="round"/>
+    </mask>
+  </defs>
+  <path d="M -60 250 Q 512 640 1084 250" fill="none" stroke="#FFFFFF" stroke-width="110"/>
+  <circle cx="512" cy="518.4" r="25.6" fill="none" stroke="#FFFFFF" stroke-width="14.08"/>
+  <circle cx="512" cy="672" r="128" fill="#FFFFFF" mask="url(#cuts)"/>
+</svg>

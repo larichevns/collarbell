@@ -1,0 +1,2051 @@
+// TEMPORARY, not part of the suite: renders every screen to PNG files for a
+// designer's Figma mockups. Delete after use.
+import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
+import 'dart:math' as math;
+import 'dart:typed_data';
+import 'dart:ui' as ui;
+
+import 'package:collarbell/app/app.dart';
+import 'package:collarbell/app/app_config.dart';
+import 'package:collarbell/app/preferences.dart';
+import 'package:collarbell/app/router.dart';
+import 'package:collarbell/data/api/api_providers.dart';
+import 'package:collarbell/data/api/offline_cache.dart';
+import 'package:collarbell/features/ai/ai_repository.dart';
+import 'package:collarbell/features/auth/auth_providers.dart';
+import 'package:collarbell/features/auth/dev_auth_repository.dart';
+import 'package:collarbell/features/care/care.dart';
+import 'package:collarbell/features/care/care_repository.dart';
+import 'package:collarbell/features/documents/document.dart';
+import 'package:collarbell/features/documents/documents_repository.dart';
+import 'package:collarbell/features/feeding/feeding.dart';
+import 'package:collarbell/features/feeding/feeding_repository.dart';
+import 'package:collarbell/features/files/files_repository.dart';
+import 'package:collarbell/features/files/media_picker.dart';
+import 'package:collarbell/features/files/stored_file.dart';
+import 'package:collarbell/features/files/widgets/stored_file_image.dart';
+import 'package:collarbell/features/household/current_household.dart';
+import 'package:collarbell/features/household/household.dart';
+import 'package:collarbell/features/household/household_repository.dart';
+import 'package:collarbell/features/me/me_repository.dart';
+import 'package:collarbell/features/me/profile_sync.dart';
+import 'package:collarbell/features/notifications/notifications.dart';
+import 'package:collarbell/features/notifications/notifications_repository.dart';
+import 'package:collarbell/features/notifications/push_platform.dart';
+import 'package:collarbell/features/onboarding/onboarding.dart';
+import 'package:collarbell/features/onboarding/welcome_screen.dart';
+import 'package:collarbell/features/passport/passport.dart';
+import 'package:collarbell/features/passport/passport_repository.dart';
+import 'package:collarbell/features/pets/pet.dart';
+import 'package:collarbell/features/pets/pet_detail_screen.dart';
+import 'package:collarbell/features/pets/pets_repository.dart';
+import 'package:collarbell/features/supplies/barcode_reader.dart';
+import 'package:collarbell/features/supplies/supplies_repository.dart';
+import 'package:collarbell/features/supplies/supply.dart';
+import 'package:collarbell/features/today/today_repository.dart';
+import 'package:collarbell/features/visits/visit.dart';
+import 'package:collarbell/features/visits/visits_repository.dart';
+import 'package:collarbell/features/weight/weight_repository.dart';
+import 'package:collarbell/theme/collarbell_theme.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart' show Override;
+import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import 'helpers/fakes.dart';
+import 'helpers/pump.dart' show appRouter;
+
+// Run from mobile/: the PNGs land in the bridge's refs folder.
+final outDir = '${Directory.current.path}/../design/figma-plugin/.refs';
+const materialFonts =
+    '/opt/homebrew/share/flutter/bin/cache/artifacts/material_fonts';
+
+/// The app's icon font, Material Symbols Rounded, from the
+/// material_symbols_icons package in the pub cache (where
+/// .dart_tool/package_config.json says it is).
+String symbolsFont() {
+  final config = File(
+    '${Directory.current.path}/.dart_tool/package_config.json',
+  );
+  final packages =
+      (jsonDecode(config.readAsStringSync()) as Map<String, dynamic>)['packages']
+          as List;
+  final package = packages.cast<Map<String, dynamic>>().firstWhere(
+    (p) => p['name'] == 'material_symbols_icons',
+  );
+  // A folder: the trailing slash keeps its last segment when resolving.
+  final root = Uri.file(config.path).resolve('${package['rootUri']}/');
+  return root.resolve('lib/fonts/MaterialSymbolsRounded.ttf').toFilePath();
+}
+
+const screen = Size(390, 844);
+const pixelRatio = 2.0;
+
+// ---------------------------------------------------------------- data ---
+
+/// A calendar date [days] from today.
+DateTime d(int days) {
+  final t = testToday();
+  return DateTime(t.year, t.month, t.day + days);
+}
+
+DateTime at(int days, int hour, int minute) {
+  final t = testToday();
+  return DateTime(t.year, t.month, t.day + days, hour, minute);
+}
+
+const t0800 = TimeOfDay(hour: 8, minute: 0);
+const t1900 = TimeOfDay(hour: 19, minute: 0);
+const clinic = 'Ветклиника «Айболит»';
+const vet = 'Иванова А. С.';
+const rcName = 'Royal Canin Sterilised 37';
+
+final murka = Pet(
+  id: 'murka',
+  name: 'Мурка',
+  species: PetSpecies.cat,
+  breed: 'Сибирская',
+  sex: PetSex.female,
+  birthDate: DateTime(2021, 4, 3),
+  neutered: true,
+  neuteredOn: DateTime(2022, 6, 5),
+  color: 'Рыжая с белым',
+  markings: 'Белое пятно на груди',
+  allergies: 'Курица',
+  notes: 'Боится пылесоса. Любит спать на подоконнике.',
+  identifiers: [
+    PetIdentifier(
+      id: 'chip-murka',
+      type: IdentifierType.isoChip,
+      code: '643094100123456',
+      rawCode: '643094100123456',
+      appliedOn: DateTime(2021, 6, 1),
+      location: 'Холка, слева',
+    ),
+  ],
+);
+
+final barsik = Pet(
+  id: 'barsik',
+  name: 'Барсик',
+  species: PetSpecies.cat,
+  breed: 'Мейн-кун',
+  sex: PetSex.male,
+  birthDate: DateTime(2019, 8, 12),
+  neutered: true,
+  color: 'Серый табби',
+);
+
+final rex = Pet(
+  id: 'rex',
+  name: 'Рекс',
+  species: PetSpecies.dog,
+  breed: 'Немецкая овчарка',
+  sex: PetSex.male,
+  birthDate: DateTime(2020, 2, 20),
+  neutered: false,
+  color: 'Чепрачный',
+);
+
+/// The server's catalog for cats and dogs (CarePresets.cs), English titles:
+/// the app shows its own Russian ones by code.
+const catalog = [
+  CarePreset(
+    code: 'cat-fvrcp',
+    species: PetSpecies.cat,
+    kind: CareKind.vaccination,
+    title: 'FVRCP',
+    interval: CareInterval(1, IntervalUnit.year),
+    targets: [VaccineTarget.fpv, VaccineTarget.fhv1, VaccineTarget.fcv],
+  ),
+  CarePreset(
+    code: 'cat-fvrcp-kitten',
+    species: PetSpecies.cat,
+    kind: CareKind.vaccination,
+    title: 'FVRCP kitten series',
+    interval: CareInterval(4, IntervalUnit.week),
+    targets: [VaccineTarget.fpv, VaccineTarget.fhv1, VaccineTarget.fcv],
+  ),
+  CarePreset(
+    code: 'cat-rabies',
+    species: PetSpecies.cat,
+    kind: CareKind.vaccination,
+    title: 'Rabies',
+    interval: CareInterval(1, IntervalUnit.year),
+    targets: [VaccineTarget.rabies],
+  ),
+  CarePreset(
+    code: 'cat-felv',
+    species: PetSpecies.cat,
+    kind: CareKind.vaccination,
+    title: 'Feline leukaemia (FeLV)',
+    interval: CareInterval(1, IntervalUnit.year),
+    targets: [VaccineTarget.felv],
+  ),
+  CarePreset(
+    code: 'cat-chlamydia',
+    species: PetSpecies.cat,
+    kind: CareKind.vaccination,
+    title: 'Chlamydia',
+    interval: CareInterval(1, IntervalUnit.year),
+    targets: [VaccineTarget.chlamydia],
+  ),
+  CarePreset(
+    code: 'cat-deworm',
+    species: PetSpecies.cat,
+    kind: CareKind.deworming,
+    title: 'Deworming',
+    interval: CareInterval(3, IntervalUnit.month),
+  ),
+  CarePreset(
+    code: 'cat-deworm-indoor',
+    species: PetSpecies.cat,
+    kind: CareKind.deworming,
+    title: 'Deworming, indoor cat',
+    interval: CareInterval(6, IntervalUnit.month),
+  ),
+  CarePreset(
+    code: 'cat-deworm-outdoor',
+    species: PetSpecies.cat,
+    kind: CareKind.deworming,
+    title: 'Deworming, cat that hunts',
+    interval: CareInterval(1, IntervalUnit.month),
+  ),
+  CarePreset(
+    code: 'cat-deworm-kitten',
+    species: PetSpecies.cat,
+    kind: CareKind.deworming,
+    title: 'Deworming, kitten',
+    interval: CareInterval(2, IntervalUnit.week),
+  ),
+  CarePreset(
+    code: 'cat-fleatick-monthly',
+    species: PetSpecies.cat,
+    kind: CareKind.fleaTick,
+    title: 'Fleas and ticks, monthly',
+    interval: CareInterval(1, IntervalUnit.month),
+  ),
+  CarePreset(
+    code: 'cat-bravecto',
+    species: PetSpecies.cat,
+    kind: CareKind.fleaTick,
+    title: 'Bravecto',
+    interval: CareInterval(12, IntervalUnit.week),
+  ),
+  CarePreset(
+    code: 'cat-bravecto-plus',
+    species: PetSpecies.cat,
+    kind: CareKind.fleaTick,
+    title: 'Bravecto Plus',
+    interval: CareInterval(12, IntervalUnit.week),
+  ),
+  CarePreset(
+    code: 'cat-seresto',
+    species: PetSpecies.cat,
+    kind: CareKind.fleaTick,
+    title: 'Seresto collar',
+    interval: CareInterval(8, IntervalUnit.month),
+  ),
+  CarePreset(
+    code: 'cat-exam',
+    species: PetSpecies.cat,
+    kind: CareKind.vetExam,
+    title: 'Check-up',
+    interval: CareInterval(1, IntervalUnit.year),
+  ),
+  CarePreset(
+    code: 'cat-dental',
+    species: PetSpecies.cat,
+    kind: CareKind.dental,
+    title: 'Dental check',
+    interval: CareInterval(1, IntervalUnit.year),
+  ),
+  CarePreset(
+    code: 'cat-nails',
+    species: PetSpecies.cat,
+    kind: CareKind.grooming,
+    title: 'Nail trim',
+    interval: CareInterval(3, IntervalUnit.week),
+  ),
+  CarePreset(
+    code: 'dog-rabies',
+    species: PetSpecies.dog,
+    kind: CareKind.vaccination,
+    title: 'Rabies',
+    interval: CareInterval(1, IntervalUnit.year),
+    targets: [VaccineTarget.rabies],
+  ),
+  CarePreset(
+    code: 'dog-deworm',
+    species: PetSpecies.dog,
+    kind: CareKind.deworming,
+    title: 'Deworming',
+    interval: CareInterval(3, IntervalUnit.month),
+  ),
+];
+
+const fvrcp = [VaccineTarget.fpv, VaccineTarget.fhv1, VaccineTarget.fcv];
+
+/// Soonest first, as the server sends them.
+List<CarePlan> carePlans() => [
+  testPlan(
+    'plan-rabies',
+    petId: 'murka',
+    kind: CareKind.vaccination,
+    title: 'Бешенство',
+    interval: const CareInterval(1, IntervalUnit.year),
+    daysLeft: -3,
+    lastDoneOn: d(-368),
+    defaultProduct: 'Nobivac Rabies',
+    targets: const [VaccineTarget.rabies],
+    presetCode: 'cat-rabies',
+  ),
+  testPlan(
+    'plan-exam',
+    petId: 'murka',
+    kind: CareKind.vetExam,
+    title: 'Осмотр у ветеринара',
+    interval: const CareInterval(1, IntervalUnit.year),
+    daysLeft: 1,
+    lastDoneOn: d(-364),
+    presetCode: 'cat-exam',
+  ),
+  testPlan(
+    'plan-rex-deworm',
+    petId: 'rex',
+    kind: CareKind.deworming,
+    title: 'Обработка от глистов',
+    interval: const CareInterval(3, IntervalUnit.month),
+    daysLeft: 4,
+    lastDoneOn: d(-88),
+    defaultProduct: 'Мильпразон',
+    presetCode: 'dog-deworm',
+  ),
+  testPlan(
+    'plan-barsik-fvrcp',
+    petId: 'barsik',
+    kind: CareKind.vaccination,
+    title: 'Комплексная прививка',
+    interval: const CareInterval(1, IntervalUnit.year),
+    daysLeft: 9,
+    lastDoneOn: d(-356),
+    defaultProduct: 'Nobivac Tricat Trio',
+    targets: fvrcp,
+    presetCode: 'cat-fvrcp',
+  ),
+  testPlan(
+    'plan-fleas',
+    petId: 'murka',
+    kind: CareKind.fleaTick,
+    title: 'Блохи и клещи',
+    interval: const CareInterval(1, IntervalUnit.month),
+    daysLeft: 25,
+    lastDoneOn: d(-5),
+    defaultProduct: 'Frontline Combo',
+    presetCode: 'cat-fleatick-monthly',
+  ),
+  testPlan(
+    'plan-deworm',
+    petId: 'murka',
+    kind: CareKind.deworming,
+    title: 'Обработка от глистов',
+    interval: const CareInterval(3, IntervalUnit.month),
+    daysLeft: 47,
+    lastDoneOn: d(-45),
+    defaultProduct: 'Мильбемакс',
+    presetCode: 'cat-deworm',
+  ),
+  testPlan(
+    'plan-fvrcp',
+    petId: 'murka',
+    kind: CareKind.vaccination,
+    title: 'Комплексная прививка',
+    interval: const CareInterval(3, IntervalUnit.year),
+    daysLeft: 373,
+    lastDoneOn: d(-722),
+    defaultProduct: 'Nobivac Tricat Trio',
+    targets: fvrcp,
+    presetCode: 'cat-fvrcp',
+  ),
+];
+
+final rabiesRecord = CareRecord(
+  id: 'rec-rabies',
+  petId: 'murka',
+  planId: 'plan-rabies',
+  kind: CareKind.vaccination,
+  title: 'Бешенство',
+  performedOn: d(-368),
+  performedTime: const TimeOfDay(hour: 11, minute: 15),
+  product: 'Nobivac Rabies',
+  manufacturer: 'MSD Animal Health',
+  batchNumber: 'A123B01',
+  validFrom: d(-368),
+  validUntil: d(-3),
+  targets: const [VaccineTarget.rabies],
+  clinic: clinic,
+  veterinarian: vet,
+  weightKg: 4.1,
+  notes: 'Перенесла хорошо, вечером была вялой.',
+  files: [testFile('rabies-sticker')],
+);
+
+/// Newest first.
+List<CareRecord> careRecords() => [
+  CareRecord(
+    id: 'rec-fleas',
+    petId: 'murka',
+    planId: 'plan-fleas',
+    kind: CareKind.fleaTick,
+    title: 'Блохи и клещи',
+    performedOn: d(-5),
+    product: 'Frontline Combo',
+    manufacturer: 'Boehringer Ingelheim',
+  ),
+  CareRecord(
+    id: 'rec-deworm',
+    petId: 'murka',
+    planId: 'plan-deworm',
+    kind: CareKind.deworming,
+    title: 'Обработка от глистов',
+    performedOn: d(-45),
+    product: 'Мильбемакс',
+    weightKg: 4.3,
+  ),
+  CareRecord(
+    id: 'rec-rex-deworm',
+    petId: 'rex',
+    planId: 'plan-rex-deworm',
+    kind: CareKind.deworming,
+    title: 'Обработка от глистов',
+    performedOn: d(-88),
+    product: 'Мильпразон',
+    weightKg: 34,
+  ),
+  CareRecord(
+    id: 'rec-barsik-fvrcp',
+    petId: 'barsik',
+    planId: 'plan-barsik-fvrcp',
+    kind: CareKind.vaccination,
+    title: 'Комплексная прививка',
+    performedOn: d(-356),
+    product: 'Nobivac Tricat Trio',
+    batchNumber: 'B456C02',
+    validUntil: d(9),
+    targets: fvrcp,
+    clinic: clinic,
+    veterinarian: vet,
+  ),
+  CareRecord(
+    id: 'rec-exam',
+    petId: 'murka',
+    planId: 'plan-exam',
+    kind: CareKind.vetExam,
+    title: 'Осмотр у ветеринара',
+    performedOn: d(-364),
+    clinic: clinic,
+    veterinarian: vet,
+    weightKg: 4.1,
+    details: const CareRecordDetails(fitForTravel: true),
+    notes: 'Здорова. Через год проверить зубы.',
+  ),
+  rabiesRecord,
+  CareRecord(
+    id: 'rec-fvrcp',
+    petId: 'murka',
+    planId: 'plan-fvrcp',
+    kind: CareKind.vaccination,
+    title: 'Комплексная прививка',
+    performedOn: d(-722),
+    product: 'Nobivac Tricat Trio',
+    manufacturer: 'MSD Animal Health',
+    batchNumber: 'C789D03',
+    validFrom: d(-722),
+    validUntil: d(373),
+    targets: fvrcp,
+    clinic: clinic,
+    veterinarian: vet,
+  ),
+];
+
+List<FeedingSchedule> feedingSchedules() => [
+  const FeedingSchedule(
+    id: 'feed-murka',
+    petId: 'murka',
+    times: [t0800, t1900],
+    days: everyDay,
+    food: rcName,
+    amount: 40,
+    unit: PortionUnit.gram,
+    notes: 'Вечером можно добавить ложку влажного корма.',
+    supplyItemId: 's-rc',
+  ),
+  const FeedingSchedule(
+    id: 'feed-murka-wet',
+    petId: 'murka',
+    times: [TimeOfDay(hour: 13, minute: 0)],
+    days: [6, 7],
+    food: 'Felix, паштет с кроликом',
+    amount: 1,
+    unit: PortionUnit.piece,
+  ),
+  const FeedingSchedule(
+    id: 'feed-barsik',
+    petId: 'barsik',
+    times: [t0800, t1900],
+    days: everyDay,
+    food: rcName,
+    amount: 45,
+    unit: PortionUnit.gram,
+    supplyItemId: 's-rc',
+  ),
+  const FeedingSchedule(
+    id: 'feed-rex',
+    petId: 'rex',
+    times: [t0800, t1900],
+    days: everyDay,
+    food: 'Acana Adult Large Breed',
+    amount: 300,
+    unit: PortionUnit.gram,
+  ),
+];
+
+TodayFeeding todayFeeding(
+  Pet pet,
+  TimeOfDay time, {
+  required String food,
+  required double amount,
+  FeedingMark? mark,
+}) => TodayFeeding(
+  routineId: 'feed-${pet.id}',
+  petId: pet.id,
+  petName: pet.name,
+  time: time,
+  food: food,
+  amount: amount,
+  unit: PortionUnit.gram,
+  mark: mark,
+);
+
+/// Today's feedings, earliest first, by pet name: one is marked.
+List<TodayFeeding> todayFeedings() => [
+  for (final time in [t0800, t1900]) ...[
+    todayFeeding(barsik, time, food: rcName, amount: 45),
+    todayFeeding(
+      murka,
+      time,
+      food: rcName,
+      amount: 40,
+      mark: time == t0800
+          ? FeedingMark(
+              id: 'mark-murka',
+              routineId: 'feed-murka',
+              date: d(0),
+              time: t0800,
+              skipped: false,
+              doneAt: at(0, 8, 4),
+              byMe: true,
+              byName: 'Анна',
+            )
+          : null,
+    ),
+    todayFeeding(rex, time, food: 'Acana Adult Large Breed', amount: 300),
+  ],
+];
+
+Visit examVisit({DateTime? date}) => Visit(
+  id: 'visit-exam',
+  type: VisitType.vet,
+  title: 'Осмотр и прививка от бешенства',
+  date: date ?? d(1),
+  time: const TimeOfDay(hour: 10, minute: 30),
+  petIds: const ['murka'],
+  remindMinutesBefore: const [1440, 120],
+  status: VisitStatus.planned,
+  durationMinutes: 45,
+  location: '$clinic, ул. Лесная, 12',
+  notes: 'Взять ветпаспорт. Не кормить за 2 часа до приёма.',
+);
+
+List<Visit> visitList() => [
+  examVisit(),
+  Visit(
+    id: 'visit-groom',
+    type: VisitType.grooming,
+    title: 'Груминг',
+    date: d(-20),
+    time: const TimeOfDay(hour: 15, minute: 0),
+    petIds: const ['barsik'],
+    remindMinutesBefore: const [1440, 120],
+    status: VisitStatus.done,
+    location: 'Салон «Пушистик», пр. Мира, 8',
+  ),
+];
+
+List<TodayVisit> todayVisits() => [
+  TodayVisit(
+    id: 'visit-exam',
+    type: VisitType.vet,
+    title: 'Осмотр и прививка от бешенства',
+    date: d(1),
+    time: const TimeOfDay(hour: 10, minute: 30),
+    daysAway: 1,
+    pets: [TodayVisitPet(id: murka.id, name: murka.name)],
+    location: '$clinic, ул. Лесная, 12',
+  ),
+];
+
+List<Supply> supplyItems() => [
+  Supply(
+    id: 's-rc',
+    name: rcName,
+    brand: 'Royal Canin',
+    barcode: '3182550702416',
+    category: SupplyCategory.dryFood,
+    unit: SupplyUnit.gram,
+    packageSize: 2000,
+    kcalPerKg: 3890,
+    usageMode: SupplyUsageMode.feeding,
+    leadTimeDays: 5,
+    storeUrl: 'https://zoomag.example/royal-canin-sterilised-37',
+    notes: 'Брать большую упаковку, 4 кг, если есть скидка.',
+    feedings: const [
+      SupplyFeeding(
+        routineId: 'feed-barsik',
+        petId: 'barsik',
+        petName: 'Барсик',
+        amount: 45,
+        unit: PortionUnit.gram,
+        timesPerDay: 2,
+        counted: true,
+      ),
+      SupplyFeeding(
+        routineId: 'feed-murka',
+        petId: 'murka',
+        petName: 'Мурка',
+        amount: 40,
+        unit: PortionUnit.gram,
+        timesPerDay: 2,
+        counted: true,
+      ),
+    ],
+    forecast: FakeSuppliesRepository.forecastOf(400, 170, 5),
+  ),
+  Supply(
+    id: 's-litter',
+    name: 'Древесный наполнитель',
+    brand: 'Cat Step',
+    category: SupplyCategory.litter,
+    unit: SupplyUnit.gram,
+    packageSize: 10000,
+    usageMode: SupplyUsageMode.manual,
+    manualDailyUsage: 10000 / 30,
+    leadTimeDays: 3,
+    forecast: FakeSuppliesRepository.forecastOf(8000, 10000 / 30, 3),
+  ),
+];
+
+List<PetDocument> documentList() => [
+  PetDocument(
+    id: 'doc-passport',
+    petId: 'murka',
+    type: DocumentType.passportPage,
+    pages: [testFile('passport-1'), testFile('passport-2'), testFile('pp-3')],
+    createdAt: at(-12, 18, 40).toUtc(),
+  ),
+  PetDocument(
+    id: 'doc-blood',
+    petId: 'murka',
+    type: DocumentType.labResult,
+    title: 'Общий анализ крови',
+    documentDate: d(-17),
+    notes: 'Все показатели в норме. Лаборатория «Вет Юнион».',
+    pages: [testFile('blood-1'), testFile('blood-2', pdf: true)],
+    createdAt: at(-17, 12, 5).toUtc(),
+  ),
+];
+
+final murkaPassport = Passport(
+  model: PassportModel.other,
+  number: 'RU0123456',
+  issuingCountry: 'RU',
+  issuedOn: DateTime(2021, 7, 1),
+  issuer: const PassportContact(
+    name: 'Иванова Анна Сергеевна',
+    address: 'Москва, ул. Лесная, 12',
+    phone: '+7 495 123-45-67',
+  ),
+  owners: const [
+    PassportContact(
+      name: 'Анна Смирнова',
+      address: 'Москва, ул. Садовая, 5, кв. 17',
+      phone: '+7 916 555-12-34',
+      email: 'anna.smirnova@example.com',
+    ),
+  ],
+  updatedAt: DateTime.utc(2026, 9, 20),
+);
+
+ReminderEntry reminder(
+  String id,
+  NotificationCategory category,
+  String subject,
+  DateTime fireAt,
+  ReminderStatus status, {
+  ReminderReason? reason,
+}) => ReminderEntry(
+  id: id,
+  category: category,
+  subject: subject,
+  fireAt: fireAt,
+  status: status,
+  reason: reason,
+);
+
+ReminderLog reminderLog() => ReminderLog(
+  upcoming: [
+    reminder(
+      'u1',
+      NotificationCategory.feeding,
+      'Барсик, Мурка, Рекс',
+      at(1, 8, 0),
+      ReminderStatus.pending,
+    ),
+    reminder(
+      'u2',
+      NotificationCategory.appointments,
+      'Осмотр и прививка от бешенства',
+      at(1, 8, 30),
+      ReminderStatus.pending,
+    ),
+    reminder(
+      'u3',
+      NotificationCategory.care,
+      'Барсик: Комплексная прививка',
+      at(2, 9, 0),
+      ReminderStatus.pending,
+    ),
+  ],
+  recent: [
+    reminder(
+      'r1',
+      NotificationCategory.feeding,
+      'Барсик, Мурка, Рекс',
+      at(0, 8, 0),
+      ReminderStatus.sent,
+    ),
+    reminder(
+      'r2',
+      NotificationCategory.supplies,
+      rcName,
+      at(-1, 10, 0),
+      ReminderStatus.sent,
+    ),
+    reminder(
+      'r3',
+      NotificationCategory.care,
+      'Мурка: Бешенство',
+      at(-1, 9, 0),
+      ReminderStatus.sent,
+    ),
+    reminder(
+      'r4',
+      NotificationCategory.feeding,
+      'Мурка',
+      at(-1, 19, 0),
+      ReminderStatus.skipped,
+      reason: ReminderReason.notNeeded,
+    ),
+  ],
+);
+
+/// Every repository, filled with the household above (or empty). [allDone]:
+/// the same household at the end of a day with nothing left to do: every
+/// feeding marked, no visit, nothing to buy, care due only later.
+class World {
+  World({bool empty = false, bool allDone = false})
+    : pets = FakePetsRepository(empty ? const [] : [barsik, murka, rex]),
+      care = FakeCareRepository(
+        presets: catalog,
+        plans: empty
+            ? const []
+            : [
+                for (final plan in carePlans())
+                  if (!allDone || plan.daysLeft > 14) plan,
+              ],
+        records: empty ? const [] : careRecords(),
+      ),
+      feeding = FakeFeedingRepository(
+        schedules: empty ? [] : feedingSchedules(),
+      ),
+      supplies = FakeSuppliesRepository(
+        supplies: empty || allDone ? [] : supplyItems(),
+      ),
+      visits = FakeVisitsRepository(
+        visits: empty || allDone ? [] : visitList(),
+      ),
+      documents = FakeDocumentsRepository(empty ? const [] : documentList()),
+      passport = FakePassportRepository(
+        empty ? const Passport() : murkaPassport,
+      ),
+      notifications = FakeNotificationsRepository(
+        log: empty
+            ? const ReminderLog(upcoming: [], recent: [])
+            : reminderLog(),
+      ) {
+    today = FakeTodayRepository(
+      care: care,
+      pets: pets,
+      supplies: supplies,
+      feedingMarks: feeding,
+      feedings: empty
+          ? const []
+          : [
+              for (final item in todayFeedings())
+                allDone && item.mark == null
+                    ? item.withMark(
+                        FeedingMark(
+                          id: 'mark-${item.routineId}-${item.time.hour}',
+                          routineId: item.routineId,
+                          date: d(0),
+                          time: item.time,
+                          skipped: false,
+                          doneAt: at(0, item.time.hour, 6),
+                          byMe: item.time == t0800,
+                          byName: item.time == t0800 ? 'Анна' : 'Сергей',
+                        ),
+                      )
+                    : item,
+            ],
+      visits: empty || allDone ? const [] : todayVisits(),
+    );
+    if (!empty) {
+      supplies.stock['s-rc'] = [
+        StockEntry(
+          id: 'e2',
+          kind: StockEventKind.adjustment,
+          quantity: 600,
+          at: at(-1, 20, 10),
+          byMe: true,
+        ),
+        StockEntry(
+          id: 'e1',
+          kind: StockEventKind.purchase,
+          quantity: 2000,
+          at: at(-12, 18, 30),
+          byMe: false,
+          byName: 'Сергей',
+        ),
+      ];
+    }
+  }
+
+  final FakePetsRepository pets;
+  final FakeCareRepository care;
+  final FakeFeedingRepository feeding;
+  final FakeSuppliesRepository supplies;
+  final FakeVisitsRepository visits;
+  final FakeDocumentsRepository documents;
+  final FakePassportRepository passport;
+  final FakeNotificationsRepository notifications;
+  late final FakeTodayRepository today;
+  final ai = FakeAiRepository(status: testAiStatus);
+  final picker = FakeMediaPicker();
+  final household = FakeHouseholdRepository();
+  final weight = FakeWeightRepository();
+  BarcodeReader barcodes = FakeBarcodeReader();
+
+  /// Pushes allowed by default; `allowed: false` asks as on a new phone.
+  FakePushPlatform push = FakePushPlatform();
+
+  /// Like `fakeRepositories`, with this household; an Android phone that
+  /// gets pushes.
+  List<Override> get overrides => [
+    petsRepositoryProvider.overrideWithValue(pets),
+    aiRepositoryProvider.overrideWithValue(ai),
+    careRepositoryProvider.overrideWithValue(care),
+    todayRepositoryProvider.overrideWithValue(today),
+    passportRepositoryProvider.overrideWithValue(this.passport),
+    documentsRepositoryProvider.overrideWithValue(documents),
+    filesRepositoryProvider.overrideWithValue(FakeFilesRepository()),
+    mediaPickerProvider.overrideWithValue(picker),
+    feedingRepositoryProvider.overrideWithValue(feeding),
+    visitsRepositoryProvider.overrideWithValue(visits),
+    notificationsRepositoryProvider.overrideWithValue(notifications),
+    suppliesRepositoryProvider.overrideWithValue(supplies),
+    barcodeReaderProvider.overrideWithValue(barcodes),
+    householdRepositoryProvider.overrideWithValue(household),
+    weightRepositoryProvider.overrideWithValue(weight),
+    pushPlatformProvider.overrideWithValue(push),
+  ];
+}
+
+// ----------------------------------------------------------- pumping ---
+
+/// The whole app in Russian on a 390×844 phone at 2x, as it looks in a
+/// release build (Firebase sign-in, a server on the internet); signed in as
+/// Anna unless [signedIn] is false, with [role] in her group. Opens
+/// [location]. Anna has seen the onboarding unless [onboardingSeen] is
+/// false.
+Future<void> openApp(
+  WidgetTester tester,
+  World world, {
+  String? location,
+  bool signedIn = true,
+  AuthMode authMode = AuthMode.firebase,
+  HouseholdRole role = HouseholdRole.owner,
+  bool onboardingSeen = true,
+}) async {
+  tester.view
+    ..physicalSize = screen * pixelRatio
+    ..devicePixelRatio = pixelRatio;
+  addTearDown(tester.view.reset);
+  SharedPreferences.setMockInitialValues({
+    if (signedIn) ...{
+      DevAuthRepository.uidKey: 'dev-0000000000000001',
+      DevAuthRepository.emailKey: 'anna.smirnova@example.com',
+      CurrentHouseholdNotifier.keyFor('dev-0000000000000001'): jsonEncode(
+        CurrentHousehold(
+          id: FakeMeRepository.homeId,
+          name: 'Home',
+          role: role,
+        ).toJson(),
+      ),
+      if (onboardingSeen)
+        OnboardingTurn.keyFor('dev-0000000000000001'): true,
+    },
+    'settings.language': 'ru',
+  });
+  final prefs = await SharedPreferences.getInstance();
+  await tester.pumpWidget(
+    ProviderScope(
+      overrides: [
+        offlineCacheStoreProvider.overrideWithValue(MemoryOfflineCacheStore()),
+        appConfigProvider.overrideWithValue(
+          AppConfig(
+            apiBaseUrl: authMode == AuthMode.dev
+                ? 'http://localhost:5080'
+                : 'https://api.collarbell.app',
+            authMode: authMode,
+          ),
+        ),
+        sharedPreferencesProvider.overrideWithValue(prefs),
+        // Sign-in without Firebase, whatever the mode says.
+        authRepositoryProvider.overrideWith((ref) {
+          final repository = DevAuthRepository(
+            ref.watch(sharedPreferencesProvider),
+          );
+          ref.onDispose(repository.dispose);
+          return repository;
+        }),
+        // The Android look: Arimo (loaded in setUpAll), as on a phone
+        // without Helvetica Neue.
+        fontResolverProvider.overrideWithValue(platformFontResolver),
+        meRepositoryProvider.overrideWithValue(
+          FakeMeRepository(
+            households: [testHousehold(FakeMeRepository.homeId, role: role)],
+          ),
+        ),
+        deviceTimeZoneProvider.overrideWithValue(() async => 'Europe/Moscow'),
+        storedPictures,
+        ...world.overrides,
+      ],
+      retry: noAutomaticRetry,
+      child: const CollarbellApp(),
+    ),
+  );
+  await tester.pumpAndSettle();
+  if (location != null) {
+    appRouter(tester).go(location);
+    await tester.pumpAndSettle();
+  }
+}
+
+final written = <String>[];
+
+/// Writes what is on screen to `<outDir>/<name>.png` at 2x.
+Future<void> shot(WidgetTester tester, String name) async {
+  await tester.pumpAndSettle();
+  // Pictures decode outside the test's fake clock: give them real time.
+  if (find.byType(Image).evaluate().isNotEmpty) {
+    for (var i = 0; i < 6; i++) {
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 20)),
+      );
+      await tester.pump();
+    }
+    await tester.pumpAndSettle();
+  }
+  final view = tester.binding.renderViews.first;
+  final layer = view.debugLayer! as OffsetLayer;
+  final bounds = view.paintBounds;
+  final bytes = await tester.runAsync(() async {
+    final image = await layer.toImage(bounds);
+    try {
+      final data = await image.toByteData(format: ui.ImageByteFormat.png);
+      return data!.buffer.asUint8List();
+    } finally {
+      image.dispose();
+    }
+  });
+  File('$outDir/$name.png').writeAsBytesSync(bytes!);
+  written.add(name);
+}
+
+/// How much taller the content of the vertical lists on screen is than the
+/// lists: positive when one scrolls, negative when they all have room to
+/// spare (then the one closest to scrolling counts).
+double overflow(WidgetTester tester) {
+  final size = tester.view.physicalSize / tester.view.devicePixelRatio;
+  final visible = Offset.zero & size;
+  double? most;
+  for (final element in find.byType(Scrollable).evaluate()) {
+    final state = (element as StatefulElement).state as ScrollableState;
+    if (state.widget.axis != Axis.vertical) continue;
+    final box = element.findRenderObject() as RenderBox?;
+    if (box == null || !box.attached || !box.hasSize) continue;
+    final rect = box.localToGlobal(Offset.zero) & box.size;
+    if (!visible.overlaps(rect)) continue;
+    final position = state.position;
+    if (!position.hasContentDimensions) continue;
+    final viewport = viewportOf(box, position);
+    if (viewport is RenderShrinkWrappingViewport) continue;
+    final double slack;
+    if (viewport == null) {
+      // A single child (SingleChildScrollView): only how far it scrolls.
+      slack = position.maxScrollExtent - position.minScrollExtent;
+    } else {
+      var content = 0.0;
+      for (final sliver in viewport.childrenInPaintOrder) {
+        content += sliver.geometry?.scrollExtent ?? 0;
+      }
+      slack = content - position.viewportDimension;
+    }
+    most = most == null ? slack : math.max(most, slack);
+  }
+  return most ?? 0;
+}
+
+/// The viewport that [position] scrolls, under [root].
+RenderViewportBase? viewportOf(RenderObject root, ScrollPosition position) {
+  RenderViewportBase? found;
+  void visit(RenderObject child) {
+    if (found != null) return;
+    if (child is RenderViewportBase && identical(child.offset, position)) {
+      found = child;
+      return;
+    }
+    child.visitChildren(visit);
+  }
+
+  visit(root);
+  return found;
+}
+
+/// [shot], then, when the screen scrolls, `<name>_full`: the whole page on a
+/// phone just tall enough for it.
+Future<void> shotFull(WidgetTester tester, String name) async {
+  await shot(tester, name);
+  if (overflow(tester) < 1) return;
+  var height = screen.height;
+  for (var i = 0; i < 12; i++) {
+    final slack = overflow(tester);
+    if (slack.abs() < 1) break;
+    final next = math.max(screen.height, (height + slack).ceilToDouble());
+    if (next == height) break;
+    height = next;
+    tester.view.physicalSize = Size(screen.width, height) * pixelRatio;
+    await tester.pumpAndSettle();
+  }
+  await shot(tester, '${name}_full');
+  tester.view.physicalSize = screen * pixelRatio;
+  await tester.pumpAndSettle();
+}
+
+/// Taps [finder], scrolling to it only when it is out of sight.
+Future<void> tapAndSettle(WidgetTester tester, Finder finder) async {
+  if (finder.hitTestable().evaluate().isEmpty) {
+    await tester.ensureVisible(finder);
+    await tester.pumpAndSettle();
+  }
+  await tester.tap(finder);
+  await tester.pumpAndSettle();
+}
+
+/// A test with real shadows: flutter_test draws them as solid outlines, and
+/// wants that back before the test ends.
+void screenTest(
+  String description,
+  Future<void> Function(WidgetTester tester) body,
+) {
+  testWidgets(description, (tester) async {
+    debugDisableShadows = false;
+    try {
+      await body(tester);
+    } finally {
+      debugDisableShadows = true;
+    }
+  });
+}
+
+// ------------------------------------------------------------ pictures ---
+
+/// Photos of stored files by file id, drawn in [drawPictures]: pages of the
+/// paper passport and of the blood test, and the vaccine sticker.
+final pictures = <String, Uint8List>{};
+
+/// Stored files show [pictures] instead of downloading anything.
+final storedPictures = storedImageProvider.overrideWithValue((url, cacheKey) {
+  final id = url
+      .replaceFirst('https://files.test/', '')
+      .replaceFirst(RegExp(r'-thumb$'), '');
+  return MemoryImage(pictures[id] ?? pictures['blank']!);
+});
+
+const ink = Color(0xFF26292B);
+const inkMuted = Color(0xFF6B7075);
+const pen = Color(0xFF2A4A9C);
+const stampInk = Color(0xB05A4BB0);
+const passportPaper = Color(0xFFF7F1E3);
+
+String dmy(DateTime date) =>
+    '${date.day.toString().padLeft(2, '0')}.'
+    '${date.month.toString().padLeft(2, '0')}.${date.year}';
+
+Future<Uint8List> picture(
+  int width,
+  int height,
+  void Function(Canvas canvas) paint,
+) async {
+  final recorder = ui.PictureRecorder();
+  paint(Canvas(recorder));
+  final recorded = recorder.endRecording();
+  final image = await recorded.toImage(width, height);
+  final data = await image.toByteData(format: ui.ImageByteFormat.png);
+  image.dispose();
+  recorded.dispose();
+  return data!.buffer.asUint8List();
+}
+
+void write(
+  Canvas canvas,
+  String value,
+  double x,
+  double y, {
+  double size = 15,
+  FontWeight weight = FontWeight.w400,
+  Color color = ink,
+  double width = 520,
+  TextAlign align = TextAlign.left,
+}) {
+  final builder =
+      ui.ParagraphBuilder(
+          ui.ParagraphStyle(
+            textAlign: align,
+            fontFamily: 'Arimo',
+            fontSize: size,
+            fontWeight: weight,
+          ),
+        )
+        ..pushStyle(
+          ui.TextStyle(
+            color: color,
+            fontFamily: 'Arimo',
+            fontSize: size,
+            fontWeight: weight,
+          ),
+        )
+        ..addText(value);
+  final paragraph = builder.build()
+    ..layout(ui.ParagraphConstraints(width: width));
+  canvas.drawParagraph(paragraph, Offset(x, y));
+}
+
+void line(
+  Canvas canvas,
+  Offset from,
+  Offset to, {
+  Color color = const Color(0x40000000),
+  double width = 1.5,
+}) => canvas.drawLine(
+  from,
+  to,
+  Paint()
+    ..color = color
+    ..strokeWidth = width,
+);
+
+void fill(Canvas canvas, Rect rect, Color color) =>
+    canvas.drawRect(rect, Paint()..color = color);
+
+void stamp(Canvas canvas, Offset center, double radius, String label) {
+  final paint = Paint()
+    ..color = stampInk
+    ..style = PaintingStyle.stroke
+    ..strokeWidth = 3;
+  canvas.drawCircle(center, radius, paint);
+  canvas.drawCircle(center, radius - 10, paint..strokeWidth = 1.5);
+  write(
+    canvas,
+    label,
+    center.dx - radius,
+    center.dy - 11,
+    size: radius / 3.6,
+    weight: FontWeight.w700,
+    color: stampInk,
+    width: radius * 2,
+    align: TextAlign.center,
+  );
+}
+
+void barcode(Canvas canvas, Rect rect) {
+  const widths = [2, 1, 3, 1, 1, 2, 1, 3, 2, 1, 1, 2, 3, 1, 2, 1, 1, 3, 2, 2];
+  final paint = Paint()..color = ink;
+  var x = rect.left;
+  for (var i = 0; x < rect.right; i++) {
+    final width = math.min(widths[i % widths.length] * 2.5, rect.right - x);
+    if (i.isEven) {
+      canvas.drawRect(Rect.fromLTWH(x, rect.top, width, rect.height), paint);
+    }
+    x += width;
+  }
+}
+
+/// A table of the paper passport: a header row and ruled rows.
+void passportTable(
+  Canvas canvas, {
+  required double top,
+  required List<double> columns,
+  required List<String> headers,
+  required int rows,
+  required double rowHeight,
+}) {
+  final left = columns.first;
+  final right = columns.last;
+  final bottom = top + 36 + rows * rowHeight;
+  for (var i = 0; i < headers.length; i++) {
+    write(
+      canvas,
+      headers[i],
+      columns[i] + 8,
+      top + 9,
+      size: 13,
+      color: inkMuted,
+      width: columns[i + 1] - columns[i] - 12,
+    );
+  }
+  for (final x in columns) {
+    line(canvas, Offset(x, top), Offset(x, bottom));
+  }
+  line(canvas, Offset(left, top), Offset(right, top));
+  for (var row = 0; row <= rows; row++) {
+    final y = top + 36 + row * rowHeight;
+    line(canvas, Offset(left, y), Offset(right, y));
+  }
+}
+
+Future<void> drawPictures() async {
+  pictures['blank'] = await picture(
+    600,
+    800,
+    (canvas) => fill(canvas, const Rect.fromLTWH(0, 0, 600, 800), passportPaper),
+  );
+
+  // The paper passport: the pet, the rabies shot, the treatments.
+  pictures['passport-1'] = await picture(600, 800, (canvas) {
+    fill(canvas, const Rect.fromLTWH(0, 0, 600, 800), passportPaper);
+    write(
+      canvas,
+      'ВЕТЕРИНАРНЫЙ ПАСПОРТ',
+      0,
+      52,
+      size: 30,
+      weight: FontWeight.w700,
+      width: 600,
+      align: TextAlign.center,
+    );
+    write(
+      canvas,
+      'INTERNATIONAL VETERINARY PASSPORT',
+      0,
+      96,
+      size: 15,
+      color: inkMuted,
+      width: 600,
+      align: TextAlign.center,
+    );
+    write(canvas, 'I. Описание животного', 48, 160, size: 19, weight: FontWeight.w700);
+    const rows = [
+      ('Кличка', 'Мурка'),
+      ('Вид', 'кошка'),
+      ('Порода', 'сибирская'),
+      ('Пол', 'самка'),
+      ('Окрас', 'рыжая с белым'),
+      ('Дата рождения', '03.04.2021'),
+      ('Микрочип', '643 094 100 123 456'),
+    ];
+    var y = 218.0;
+    for (final (label, value) in rows) {
+      write(canvas, label, 48, y, color: inkMuted);
+      write(canvas, value, 232, y - 6, size: 22, color: pen, width: 330);
+      line(canvas, Offset(226, y + 26), Offset(552, y + 26));
+      y += 62;
+    }
+    write(
+      canvas,
+      'Выдан 01.07.2021\nВетклиника «Айболит», Москва',
+      48,
+      682,
+      size: 14,
+      color: inkMuted,
+      width: 330,
+    );
+    stamp(canvas, const Offset(480, 700), 58, 'АЙБОЛИТ');
+  });
+
+  pictures['passport-2'] = await picture(600, 800, (canvas) {
+    fill(canvas, const Rect.fromLTWH(0, 0, 600, 800), passportPaper);
+    write(
+      canvas,
+      'V. Вакцинация против бешенства',
+      40,
+      44,
+      size: 22,
+      weight: FontWeight.w700,
+    );
+    const columns = [40.0, 150.0, 340.0, 460.0, 560.0];
+    passportTable(
+      canvas,
+      top: 100,
+      columns: columns,
+      headers: const ['Дата', 'Вакцина', 'Действует', 'Подпись'],
+      rows: 4,
+      rowHeight: 150,
+    );
+    const row = 136.0;
+    write(canvas, dmy(d(-368)), 48, row + 18, size: 17, color: pen, width: 100);
+    final sticker = Rect.fromLTWH(158, row + 16, 172, 116);
+    fill(canvas, sticker, const Color(0xFFFFFFFF));
+    fill(
+      canvas,
+      Rect.fromLTWH(sticker.left, sticker.top, sticker.width, 30),
+      const Color(0xFF00857C),
+    );
+    write(
+      canvas,
+      'NOBIVAC RABIES',
+      sticker.left + 8,
+      sticker.top + 5,
+      size: 14,
+      weight: FontWeight.w700,
+      color: const Color(0xFFFFFFFF),
+      width: 160,
+    );
+    write(canvas, 'Lot A123B01', sticker.left + 8, sticker.top + 38, size: 13, width: 160);
+    barcode(canvas, Rect.fromLTWH(sticker.left + 8, sticker.top + 64, 150, 40));
+    write(
+      canvas,
+      'с ${dmy(d(-368))}\nдо ${dmy(d(-3))}',
+      346,
+      row + 22,
+      size: 15,
+      color: pen,
+      width: 110,
+    );
+    stamp(canvas, const Offset(510, row + 76), 44, 'АЙБОЛИТ');
+  });
+
+  pictures['pp-3'] = await picture(600, 800, (canvas) {
+    fill(canvas, const Rect.fromLTWH(0, 0, 600, 800), passportPaper);
+    write(
+      canvas,
+      'VIII. Обработки от паразитов',
+      40,
+      44,
+      size: 22,
+      weight: FontWeight.w700,
+    );
+    const columns = [40.0, 170.0, 450.0, 560.0];
+    passportTable(
+      canvas,
+      top: 100,
+      columns: columns,
+      headers: const ['Дата', 'Препарат', 'Подпись'],
+      rows: 8,
+      rowHeight: 76,
+    );
+    final rows = [
+      (dmy(d(-45)), 'Мильбемакс'),
+      (dmy(d(-5)), 'Frontline Combo'),
+    ];
+    var y = 136.0;
+    for (final (date, product) in rows) {
+      write(canvas, date, 48, y + 24, size: 17, color: pen, width: 120);
+      write(canvas, product, 180, y + 22, size: 19, color: pen, width: 260);
+      write(canvas, 'Смирнова', 462, y + 26, size: 14, color: pen, width: 96);
+      y += 76;
+    }
+  });
+
+  // The blood test from the laboratory.
+  pictures['blood-1'] = await picture(600, 800, (canvas) {
+    const teal = Color(0xFF1F7A8C);
+    fill(canvas, const Rect.fromLTWH(0, 0, 600, 800), const Color(0xFFFFFFFF));
+    fill(canvas, const Rect.fromLTWH(0, 0, 600, 10), teal);
+    write(canvas, 'ВЕТ ЮНИОН', 40, 34, size: 18, weight: FontWeight.w700, color: teal);
+    write(canvas, 'ветеринарная лаборатория', 40, 60, size: 13, color: inkMuted);
+    write(
+      canvas,
+      'Заказ № 26-091517',
+      340,
+      40,
+      size: 13,
+      color: inkMuted,
+      width: 220,
+      align: TextAlign.right,
+    );
+    write(canvas, 'Общий анализ крови', 40, 104, size: 27, weight: FontWeight.w700);
+    write(
+      canvas,
+      'Пациент: Мурка, кошка, 5 лет\nВладелец: Смирнова А.\n'
+      'Дата: ${dmy(d(-17))}',
+      40,
+      150,
+      size: 15,
+      width: 520,
+    );
+    var y = 242.0;
+    write(canvas, 'Показатель', 40, y, size: 13, weight: FontWeight.w700, color: inkMuted);
+    write(canvas, 'Результат', 330, y, size: 13, weight: FontWeight.w700, color: inkMuted);
+    write(canvas, 'Норма', 450, y, size: 13, weight: FontWeight.w700, color: inkMuted);
+    y += 26;
+    line(canvas, Offset(40, y), Offset(560, y), color: const Color(0x66000000));
+    const rows = [
+      ('Гемоглобин, г/л', '128', '80–150'),
+      ('Гематокрит, %', '37', '24–45'),
+      ('Эритроциты, млн/мкл', '8,1', '5,0–10,0'),
+      ('Лейкоциты, тыс/мкл', '9,4', '5,5–19,5'),
+      ('Нейтрофилы, %', '62', '35–75'),
+      ('Лимфоциты, %', '30', '20–55'),
+      ('Моноциты, %', '3', '1–4'),
+      ('Эозинофилы, %', '5', '2–12'),
+      ('Тромбоциты, тыс/мкл', '310', '300–800'),
+    ];
+    for (final (name, value, norm) in rows) {
+      write(canvas, name, 40, y + 10, size: 15, width: 280);
+      write(canvas, value, 330, y + 10, size: 15, weight: FontWeight.w700, width: 110);
+      write(canvas, norm, 450, y + 10, size: 15, color: inkMuted, width: 110);
+      y += 40;
+      line(canvas, Offset(40, y), Offset(560, y), color: const Color(0x22000000));
+    }
+    write(canvas, 'Врач-лаборант: Петрова Е. В.', 40, 700, size: 14, color: inkMuted);
+    stamp(canvas, const Offset(470, 712), 54, 'ВЕТ ЮНИОН');
+  });
+
+  // A photo of the vaccine sticker in the passport.
+  pictures['rabies-sticker'] = await picture(800, 600, (canvas) {
+    fill(canvas, const Rect.fromLTWH(0, 0, 800, 600), const Color(0xFFE6DCC6));
+    for (var y = 40.0; y < 600; y += 90) {
+      line(canvas, Offset(0, y), Offset(800, y), color: const Color(0x26000000));
+    }
+    canvas
+      ..save()
+      ..translate(400, 300)
+      ..rotate(-0.05);
+    final label = Rect.fromCenter(center: Offset.zero, width: 480, height: 300);
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(label.shift(const Offset(6, 10)), const Radius.circular(16)),
+      Paint()..color = const Color(0x30000000),
+    );
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(label, const Radius.circular(16)),
+      Paint()..color = const Color(0xFFFFFFFF),
+    );
+    canvas.drawRRect(
+      RRect.fromRectAndCorners(
+        Rect.fromLTWH(label.left, label.top, label.width, 72),
+        topLeft: const Radius.circular(16),
+        topRight: const Radius.circular(16),
+      ),
+      Paint()..color = const Color(0xFF00857C),
+    );
+    write(
+      canvas,
+      'NOBIVAC RABIES',
+      label.left + 26,
+      label.top + 18,
+      size: 32,
+      weight: FontWeight.w700,
+      color: const Color(0xFFFFFFFF),
+      width: 430,
+    );
+    write(canvas, 'MSD Animal Health', label.left + 26, label.top + 90, size: 20, color: inkMuted);
+    write(canvas, 'Lot A123B01', label.left + 26, label.top + 124, size: 27, weight: FontWeight.w700);
+    write(
+      canvas,
+      'Exp ${dmy(d(400)).substring(3)}',
+      label.left + 26,
+      label.top + 162,
+      size: 22,
+    );
+    barcode(canvas, Rect.fromLTWH(label.left + 26, label.top + 208, 320, 62));
+    canvas.restore();
+  });
+}
+
+// -------------------------------------------------------------- tests ---
+
+void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  // The onboarding is tapped through faster than a person would.
+  WelcomeScreen.settleAfterMove = Duration.zero;
+
+  setUpAll(() async {
+    Directory(outDir).createSync(recursive: true);
+    Future<void> family(String name, List<Future<ByteData>> fonts) async {
+      final loader = FontLoader(name);
+      fonts.forEach(loader.addFont);
+      await loader.load();
+    }
+
+    Future<ByteData> asset(String file) =>
+        rootBundle.load('assets/google_fonts/$file');
+    Future<ByteData> system(String file) async =>
+        ByteData.sublistView(File('$materialFonts/$file').readAsBytesSync());
+
+    // Arimo under both names the theme may ask for: 'Arimo' (Android, the
+    // look rendered here) and 'Helvetica Neue' (iPhone; Arimo has the same
+    // widths, so the layout matches).
+    for (final name in ['Arimo', 'Helvetica Neue']) {
+      await family(name, [
+        for (final weight in ['Regular', 'Medium', 'Bold'])
+          asset('Arimo-$weight.ttf'),
+      ]);
+    }
+    await family('JetBrains Mono', [asset('JetBrainsMono-Medium.ttf')]);
+    await family('MaterialIcons', [system('MaterialIcons-Regular.otf')]);
+    // Under the name a package's font has: `packages/<package>/<family>`
+    // (IconData's fontPackage and fontFamily).
+    await family('packages/material_symbols_icons/MaterialSymbolsRounded', [
+      Future.value(
+        ByteData.sublistView(File(symbolsFont()).readAsBytesSync()),
+      ),
+    ]);
+    // Only a stand-in for text with no family, as the phone's system font.
+    await family('Roboto', [
+      system('Roboto-Regular.ttf'),
+      system('Roboto-Medium.ttf'),
+      system('Roboto-Bold.ttf'),
+    ]);
+    await drawPictures();
+  });
+
+  tearDownAll(() {
+    // ignore: avoid_print
+    print('WROTE ${written.length}: ${written.join(', ')}');
+  });
+
+  // 1. Sign in and sign up.
+  screenTest('01 auth', (tester) async {
+    await openApp(tester, World(empty: true), signedIn: false);
+    await shot(tester, '01_auth_sign_in');
+    await tapAndSettle(
+      tester,
+      find.text('Впервые в Collarbell? Создайте аккаунт'),
+    );
+    await shot(tester, '01_auth_sign_up');
+  });
+
+  screenTest('01 auth, dev build', (tester) async {
+    await openApp(
+      tester,
+      World(empty: true),
+      signedIn: false,
+      authMode: AuthMode.dev,
+    );
+    await shotFull(tester, '01_auth_sign_in_dev');
+  });
+
+  // 0. Home, the first tab.
+  screenTest('00 home', (tester) async {
+    await openApp(tester, World(), location: AppRoutes.home);
+    await shotFull(tester, '00_home_with_data');
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('quickWeigh')),
+      300,
+      // Home's list; the row of pets scrolls too, sideways.
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tapAndSettle(tester, find.byKey(const ValueKey('quickWeigh')));
+    await shot(tester, '00_home_pet_picker');
+  });
+
+  screenTest('00 home, all done', (tester) async {
+    await openApp(tester, World(allDone: true), location: AppRoutes.home);
+    await shotFull(tester, '00_home_all_done');
+  });
+
+  screenTest('00 home, no pets', (tester) async {
+    await openApp(tester, World(empty: true), location: AppRoutes.home);
+    await shotFull(tester, '00_home_no_pets');
+  });
+
+  screenTest('00 home, nothing set up', (tester) async {
+    final world = World(empty: true);
+    world.pets.pets.addAll([barsik, murka]);
+    await openApp(tester, world, location: AppRoutes.home);
+    await shotFull(tester, '00_home_first_steps');
+  });
+
+  screenTest('00 home, helper', (tester) async {
+    await openApp(
+      tester,
+      World(),
+      location: AppRoutes.home,
+      role: HouseholdRole.helper,
+    );
+    await shotFull(tester, '00_home_helper');
+  });
+
+  // A small phone (320 dp) with large text (1.3), real fonts: nothing may
+  // overflow (an overflow fails the test) or be cut.
+  for (final (name, location, height) in [
+    ('00_home', AppRoutes.home, 2400.0),
+    ('02_today', AppRoutes.today, 3600.0),
+  ]) {
+    screenTest('$name, 320 dp, large text', (tester) async {
+      tester.platformDispatcher.textScaleFactorTestValue = 1.3;
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+      await openApp(tester, World(), location: location);
+      tester.view.physicalSize = Size(320, height) * pixelRatio;
+      await tester.pumpAndSettle();
+      await shot(tester, '${name}_320_large_text');
+    });
+  }
+
+  screenTest('14 onboarding, 320 dp, large text', (tester) async {
+    tester.platformDispatcher.textScaleFactorTestValue = 1.3;
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+    final world = World(empty: true)..push = FakePushPlatform(allowed: false);
+    await openApp(tester, world, location: AppRoutes.more);
+    tester.view.physicalSize = const Size(320, 640) * pixelRatio;
+    await tester.pumpAndSettle();
+    appRouter(tester).push(AppRoutes.welcome);
+    await tester.pumpAndSettle();
+    await shot(tester, '14_welcome_320_large_text_intro');
+    for (var page = 0; page < 3; page++) {
+      await tapAndSettle(tester, find.byType(FilledButton));
+    }
+    await shot(tester, '14_welcome_320_large_text_step1');
+  });
+
+  // 14. The onboarding of a new account: it opens by itself on Home.
+  screenTest('14 onboarding, new account', (tester) async {
+    final world = World(empty: true)
+      ..push = FakePushPlatform(allowed: false);
+    // Home is where the app opens; no `go`, which would close what Home
+    // opened over itself.
+    await openApp(tester, world, onboardingSeen: false);
+    for (var page = 1; page <= 3; page++) {
+      await shot(tester, '14_welcome_${page}_intro');
+      await tapAndSettle(tester, find.byType(FilledButton));
+    }
+    await shot(tester, '14_welcome_step1_pet');
+    await tester.enterText(find.byType(TextFormField), 'Мурка');
+    await tester.pumpAndSettle();
+    await tapAndSettle(tester, find.byType(FilledButton));
+    await shot(tester, '14_welcome_step2_feeding');
+    await tapAndSettle(tester, find.byType(FilledButton));
+    await shot(tester, '14_welcome_step3_push');
+    await tapAndSettle(tester, find.byKey(const ValueKey('welcomeSkip')));
+    await shot(tester, '14_welcome_step4_family');
+  });
+
+  screenTest('14 onboarding, already set up', (tester) async {
+    await openApp(tester, World(), location: AppRoutes.more);
+    await tester.scrollUntilVisible(find.byKey(const ValueKey('welcome')), 300);
+    await tapAndSettle(tester, find.byKey(const ValueKey('welcome')));
+    for (var page = 1; page <= 3; page++) {
+      await tapAndSettle(tester, find.byType(FilledButton));
+    }
+    await shot(tester, '14_welcome_step1_pet_done');
+    await tapAndSettle(tester, find.byType(FilledButton));
+    await shot(tester, '14_welcome_step2_feeding_done');
+    await tapAndSettle(tester, find.byType(FilledButton));
+    await shot(tester, '14_welcome_step3_push_on');
+    await tapAndSettle(tester, find.byType(FilledButton));
+    // "Invite": who, then the code.
+    await tapAndSettle(tester, find.byType(FilledButton));
+    await tapAndSettle(tester, find.byKey(const ValueKey('invite-member')));
+    Navigator.of(tester.element(find.byType(BottomSheet))).pop();
+    await tester.pumpAndSettle();
+    await shot(tester, '14_welcome_step4_family_invited');
+  });
+
+  // 2. Today.
+  screenTest('02 today', (tester) async {
+    await openApp(tester, World(), location: AppRoutes.today);
+    await shotFull(tester, '02_today_with_data');
+  });
+
+  screenTest('02 today, first steps', (tester) async {
+    await openApp(tester, World(empty: true), location: AppRoutes.today);
+    await shotFull(tester, '02_today_first_steps');
+  });
+
+  screenTest('02 today, first steps with pets', (tester) async {
+    final world = World(empty: true);
+    world.pets.pets.addAll([barsik, murka]);
+    await openApp(tester, world, location: AppRoutes.today);
+    await shotFull(tester, '02_today_first_steps_with_pets');
+  });
+
+  screenTest('02 today, offline', (tester) async {
+    await openApp(tester, World(), location: AppRoutes.today);
+    ProviderScope.containerOf(tester.element(find.byType(CollarbellApp)))
+        .read(serverReachabilityProvider.notifier)
+        .report(
+          ServerReachability.unreachable(
+            dataAt: DateTime.now().copyWith(hour: 14, minute: 5),
+          ),
+        );
+    await tester.pump();
+    await shot(tester, '02_today_offline');
+  });
+
+  // 3. Pets.
+  screenTest('03 pets', (tester) async {
+    await openApp(tester, World(), location: AppRoutes.pets);
+    await shotFull(tester, '03_pets_list');
+  });
+
+  screenTest('03 pets, empty', (tester) async {
+    await openApp(tester, World(empty: true), location: AppRoutes.pets);
+    await shot(tester, '03_pets_empty');
+  });
+
+  // 4. The pet's page, tab by tab.
+  for (final tab in PetTab.values) {
+    screenTest('04 pet ${tab.name}', (tester) async {
+      await openApp(
+        tester,
+        World(),
+        location: AppRoutes.pet('murka', tab: tab),
+      );
+      await shotFull(tester, '04_pet_${tab.index + 1}_${tab.name}');
+    });
+  }
+
+  // The tabs of a pet with nothing in them yet.
+  for (final tab in PetTab.values) {
+    screenTest('04 pet ${tab.name}, empty', (tester) async {
+      final world = World(empty: true);
+      world.pets.pets.add(murka);
+      await openApp(
+        tester,
+        world,
+        location: AppRoutes.pet('murka', tab: tab),
+      );
+      await shotFull(tester, '04_pet_${tab.index + 1}_${tab.name}_empty');
+    });
+  }
+
+  // 5. The pet form.
+  screenTest('05 pet form, new', (tester) async {
+    await openApp(tester, World(), location: AppRoutes.newPet);
+    await shotFull(tester, '05_pet_form_new');
+  });
+
+  screenTest('05 pet form, edit', (tester) async {
+    await openApp(tester, World(), location: AppRoutes.editPet('murka'));
+    await shotFull(tester, '05_pet_form_edit');
+  });
+
+  // 6. Care.
+  screenTest('06 care presets', (tester) async {
+    await openApp(tester, World(), location: AppRoutes.carePresets('murka'));
+    await shotFull(tester, '06_care_preset_picker');
+  });
+
+  screenTest('06 care plan form, new', (tester) async {
+    await openApp(
+      tester,
+      World(),
+      location: AppRoutes.newCarePlan('murka', presetCode: 'cat-felv'),
+    );
+    await shotFull(tester, '06_care_plan_form_new');
+  });
+
+  screenTest('06 care plan form, edit', (tester) async {
+    await openApp(
+      tester,
+      World(),
+      location: AppRoutes.editCarePlan('murka', 'plan-rabies'),
+    );
+    await shotFull(tester, '06_care_plan_form_edit');
+  });
+
+  screenTest('06 care done', (tester) async {
+    await openApp(
+      tester,
+      World(),
+      location: AppRoutes.carePlanDone('murka', 'plan-rabies'),
+    );
+    await shotFull(tester, '06_care_done');
+  });
+
+  screenTest('06 care record form, new', (tester) async {
+    await openApp(
+      tester,
+      World(),
+      location: AppRoutes.newCareRecord(
+        'murka',
+        kind: CareKind.vaccination,
+        target: VaccineTarget.rabies,
+      ),
+    );
+    await shotFull(tester, '06_care_record_form_new');
+  });
+
+  screenTest('06 care record form, edit', (tester) async {
+    await openApp(
+      tester,
+      World(),
+      location: AppRoutes.editCareRecord('murka', 'rec-rabies'),
+    );
+    await shotFull(tester, '06_care_record_form_edit');
+  });
+
+  screenTest('06 care record detail', (tester) async {
+    await openApp(
+      tester,
+      World(),
+      location: AppRoutes.careRecord('murka', 'rec-rabies'),
+    );
+    await shotFull(tester, '06_care_record_detail');
+  });
+
+  // 7. Passport.
+  screenTest('07 passport form', (tester) async {
+    await openApp(tester, World(), location: AppRoutes.editPassport('murka'));
+    await shotFull(tester, '07_passport_form');
+  });
+
+  // 8. Documents.
+  screenTest('08 document form, new', (tester) async {
+    await openApp(tester, World(), location: AppRoutes.newDocument('murka'));
+    await shotFull(tester, '08_documents_form_new');
+  });
+
+  screenTest('08 document form, edit', (tester) async {
+    await openApp(
+      tester,
+      World(),
+      location: AppRoutes.editDocument('murka', 'doc-blood'),
+    );
+    await shotFull(tester, '08_documents_form_edit');
+  });
+
+  screenTest('08 document detail', (tester) async {
+    await openApp(
+      tester,
+      World(),
+      location: AppRoutes.document('murka', 'doc-blood'),
+    );
+    await shotFull(tester, '08_documents_detail');
+  });
+
+  // 9. Visits.
+  screenTest('09 visits list', (tester) async {
+    await openApp(tester, World(), location: AppRoutes.visits);
+    await shotFull(tester, '09_visits_list');
+  });
+
+  screenTest('09 visits list, empty', (tester) async {
+    await openApp(tester, World(empty: true), location: AppRoutes.visits);
+    await shot(tester, '09_visits_empty');
+  });
+
+  screenTest('09 visit form, new', (tester) async {
+    await openApp(tester, World(), location: AppRoutes.newVisit);
+    await shotFull(tester, '09_visits_form_new');
+  });
+
+  screenTest('09 visit form, edit', (tester) async {
+    await openApp(
+      tester,
+      World(),
+      location: AppRoutes.editVisit('visit-exam'),
+    );
+    await shotFull(tester, '09_visits_form_edit');
+  });
+
+  screenTest('09 visit detail', (tester) async {
+    await openApp(tester, World(), location: AppRoutes.visit('visit-exam'));
+    await shotFull(tester, '09_visits_detail');
+  });
+
+  screenTest('09 visit took place', (tester) async {
+    // The same visit on its day: "The visit took place" shows from then.
+    final world = World();
+    world.visits.visits[0] = examVisit(date: d(0));
+    await openApp(tester, world, location: AppRoutes.visit('visit-exam'));
+    await shot(tester, '09_visits_detail_on_the_day');
+    await tapAndSettle(tester, find.text('Визит состоялся'));
+    await shot(tester, '09_visits_took_place_sheet');
+  });
+
+  // 10. Feeding.
+  screenTest('10 feeding form, new', (tester) async {
+    await openApp(tester, World(), location: AppRoutes.newFeeding('barsik'));
+    await shotFull(tester, '10_feeding_form_new');
+  });
+
+  screenTest('10 feeding form, edit', (tester) async {
+    await openApp(
+      tester,
+      World(),
+      location: AppRoutes.editFeeding('murka', 'feed-murka'),
+    );
+    await shotFull(tester, '10_feeding_form_edit');
+  });
+
+  // 11. Supplies.
+  screenTest('11 supplies list and sheets', (tester) async {
+    await openApp(tester, World(), location: AppRoutes.supplies);
+    await shotFull(tester, '11_supplies_list');
+    await tapAndSettle(tester, find.byKey(const ValueKey('addSupply')));
+    await shot(tester, '11_supplies_add_sheet');
+    Navigator.of(tester.element(find.byType(BottomSheet))).pop();
+    await tester.pumpAndSettle();
+    await tapAndSettle(tester, find.byKey(const ValueKey('bought-s-rc')));
+    await shot(tester, '11_supplies_bought_sheet');
+  });
+
+  screenTest('11 supplies, empty', (tester) async {
+    await openApp(tester, World(empty: true), location: AppRoutes.supplies);
+    await shotFull(tester, '11_supplies_empty');
+  });
+
+  screenTest('11 supply detail and count', (tester) async {
+    await openApp(tester, World(), location: AppRoutes.supply('s-rc'));
+    await shotFull(tester, '11_supplies_detail');
+    await tapAndSettle(tester, find.byKey(const ValueKey('count')));
+    await shot(tester, '11_supplies_count_sheet');
+  });
+
+  screenTest('11 supply form, new', (tester) async {
+    await openApp(tester, World(), location: AppRoutes.newSupply);
+    await shotFull(tester, '11_supplies_form_new');
+  });
+
+  screenTest('11 supply form, edit', (tester) async {
+    await openApp(tester, World(), location: AppRoutes.editSupply('s-rc'));
+    await shotFull(tester, '11_supplies_form_edit');
+  });
+
+  screenTest('11 product scan: scanner, typed code, unknown product', (
+    tester,
+  ) async {
+    // The camera plugin, as on a phone whose camera is still starting.
+    final messenger = tester.binding.defaultBinaryMessenger;
+    const method = MethodChannel(
+      'dev.steenbakker.mobile_scanner/scanner/method',
+    );
+    const events = [
+      EventChannel('dev.steenbakker.mobile_scanner/scanner/event'),
+      EventChannel('dev.steenbakker.mobile_scanner/scanner/deviceOrientation'),
+    ];
+    messenger.setMockMethodCallHandler(method, (call) async {
+      switch (call.method) {
+        case 'state':
+          return 1;
+        case 'start':
+          // Never answers: the viewfinder stays black, as while starting.
+          return Completer<Object?>().future;
+        default:
+          return null;
+      }
+    });
+    for (final channel in events) {
+      messenger.setMockStreamHandler(
+        channel,
+        MockStreamHandler.inline(onListen: (arguments, events) {}),
+      );
+    }
+    addTearDown(() {
+      messenger.setMockMethodCallHandler(method, null);
+      for (final channel in events) {
+        messenger.setMockStreamHandler(channel, null);
+      }
+    });
+
+    final world = World()..barcodes = const CameraBarcodeReader();
+    await openApp(tester, world, location: AppRoutes.supplies);
+    appRouter(tester).push(AppRoutes.supplyScan());
+    await tester.pumpAndSettle();
+    await shot(tester, '11_supplies_scan_camera');
+
+    await tester.tap(find.byKey(const ValueKey('typeCode')));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const ValueKey('code')), '4607009123455');
+    await tester.pumpAndSettle();
+    await shot(tester, '11_supplies_scan_type_code');
+
+    await tester.tap(find.text('Найти'));
+    await tester.pumpAndSettle();
+    await shot(tester, '11_supplies_scan_unknown_product');
+  });
+
+  screenTest('11 product scan: photos of the package', (tester) async {
+    final world = World();
+    world.picker.camera.add(
+      const PickedMedia(path: '/tmp/package-front.jpg', name: 'front.jpg'),
+    );
+    await openApp(tester, world, location: AppRoutes.supplies);
+    appRouter(tester).push(AppRoutes.supplyScan(photos: true));
+    await tester.pumpAndSettle();
+    await shot(tester, '11_supplies_scan_photos');
+  });
+
+  // 12. More.
+  screenTest('12 more', (tester) async {
+    await openApp(tester, World(), location: AppRoutes.more);
+    await shotFull(tester, '12_more_more');
+  });
+
+  screenTest('12 notifications', (tester) async {
+    await openApp(tester, World(), location: AppRoutes.notifications);
+    await shotFull(tester, '12_more_notifications');
+  });
+
+  screenTest('12 ai', (tester) async {
+    await openApp(tester, World(), location: AppRoutes.ai);
+    await shotFull(tester, '12_more_ai');
+  });
+
+  // 13. Dialogs.
+  screenTest('13 leave without saving', (tester) async {
+    await openApp(tester, World(), location: AppRoutes.editPet('murka'));
+    await tester.enterText(find.byKey(const ValueKey('name')), 'Мурочка');
+    await tester.pumpAndSettle();
+    // Not pageBack(): it looks for the English "Back" tooltip.
+    await tester.tap(find.byType(BackButton));
+    await tester.pumpAndSettle();
+    await shot(tester, '13_dialogs_leave_without_saving');
+  });
+
+  screenTest('13 sign out', (tester) async {
+    await openApp(tester, World(), location: AppRoutes.more);
+    await tester.scrollUntilVisible(find.text('Выйти'), 300);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Выйти'));
+    await tester.pumpAndSettle();
+    await shot(tester, '13_dialogs_sign_out');
+  });
+}

@@ -1,0 +1,16 @@
+swagger_parser:
+  schema_path: ../contracts/openapi.json
+  output_directory: lib/data/api/generated
+  name: collarbell_api
+  json_serializer: json_serializable
+  root_client_name: CollarbellApi
+  use_multipart_file: true
+  # Dates (`format: date`) must be sent as 2021-04-03, not as timestamps:
+  # see lib/data/api/date_only_converter.dart.
+  field_parsers:
+    - apply_to_type: "DateTime?"
+      parser_name: "DateOnlyConverter"
+      parser_absolute_path: "package:collarbell/data/api/date_only_converter.dart"
+    - apply_to_type: "DateTime"
+      parser_name: "RequiredDateOnlyConverter"
+      parser_absolute_path: "package:collarbell/data/api/date_only_converter.dart"

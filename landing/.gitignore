@@ -1,0 +1,4 @@
+# Installed packages, the built site and Astro's generated types.
+node_modules/
+dist/
+.astro/

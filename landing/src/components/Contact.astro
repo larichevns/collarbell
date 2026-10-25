@@ -1,0 +1,31 @@
+---
+// The contact address (SUPPORT_EMAIL in src/site.ts). While it is empty, the block says an address will appear.
+import { SUPPORT_EMAIL } from '../site';
+import { UI, type Lang } from '../i18n';
+import Icon from './Icon.astro';
+
+interface Props {
+  lang: Lang;
+  /** Subject for the e-mail, e.g. for a deletion request. */
+  subject?: string;
+}
+
+const { lang, subject } = Astro.props;
+const t = UI[lang];
+const href = SUPPORT_EMAIL
+  ? `mailto:${SUPPORT_EMAIL}${subject ? `?subject=${encodeURIComponent(subject)}` : ''}`
+  : undefined;
+---
+
+<div class="contact">
+  <Icon name="mail" />
+  {
+    href ? (
+      <p>
+        {t.contactLabel}: <a href={href}>{SUPPORT_EMAIL}</a>
+      </p>
+    ) : (
+      <p>{t.contactSoon}</p>
+    )
+  }
+</div>

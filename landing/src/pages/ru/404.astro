@@ -1,0 +1,18 @@
+---
+// Русская страница «не найдено» (/ru/404.html). nginx показывает её, если для /ru/ задан свой error_page;
+// иначе для любого адреса показывается /404.html, где русская строка тоже есть.
+import Base from '../../layouts/Base.astro';
+import { pageHref } from '../../i18n';
+---
+
+<Base lang="ru" title="Страница не найдена — Collarbell" description="По этому адресу ничего нет.">
+  <div class="wrap not-found">
+    <p class="not-found-code" aria-hidden="true">404</p>
+    <h1 class="page-title">Страница не найдена</h1>
+    <p class="muted">По этому адресу ничего нет. Возможно, ссылка устарела или в ней опечатка.</p>
+    <a class="button button--primary" href={pageHref('ru', 'home')}>На главную</a>
+    <div class="not-found-other" lang="en">
+      <p>Page not found. <a href={pageHref('en', 'home')}>Go to the home page</a></p>
+    </div>
+  </div>
+</Base>

@@ -1,0 +1,19 @@
+{
+  "name": "collarbell-landing",
+  "description": "Collarbell's public site: the landing page and the pages app stores require (privacy, terms, account deletion, support), in English and Russian.",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "check-tokens": "node tool/gen-tokens.mjs --check",
+    "tokens": "node tool/gen-tokens.mjs"
+  },
+  "dependencies": {
+    "astro": "^7.3.5"
+  }
+}

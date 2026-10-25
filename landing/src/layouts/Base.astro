@@ -1,0 +1,66 @@
+---
+// The frame of every page: <head> (language, canonical and hreflang links, indexing, icons, link preview),
+// header, the page, footer.
+// No font preload: on a Mac or an iPhone the page uses the system's Helvetica Neue and never downloads Arimo, and
+// elsewhere it shows Arial until Arimo arrives, with the same letter widths, so the text doesn't move.
+import '../styles/fonts.css';
+import '../styles/tokens.css';
+import '../styles/global.css';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+import { INDEXABLE, SITE_URL } from '../site';
+import { LANGS, OG_LOCALES, UI, otherLang, pageUrl, type Lang, type PageKey } from '../i18n';
+
+interface Props {
+  lang: Lang;
+  /** The page, for canonical and hreflang links; the 404 page has none. */
+  page?: PageKey;
+  title: string;
+  description: string;
+  /** A class on <body>, e.g. "home". */
+  bodyClass?: string;
+}
+
+const { lang, page, title, description, bodyClass } = Astro.props;
+const canonical = page ? pageUrl(lang, page) : undefined;
+const ogImage = new URL('/og-image.png', SITE_URL).href;
+---
+
+<!doctype html>
+<html lang={lang} dir="ltr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    {(!INDEXABLE || !page) && <meta name="robots" content="noindex" />}
+    {canonical && <link rel="canonical" href={canonical} />}
+    {page && LANGS.map((code) => <link rel="alternate" hreflang={code} href={pageUrl(code, page)} />)}
+    {page && <link rel="alternate" hreflang="x-default" href={pageUrl('en', page)} />}
+    <link rel="icon" href="/favicon.ico" sizes="48x48" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#191e28" media="(prefers-color-scheme: dark)" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Collarbell" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    {canonical && <meta property="og:url" content={canonical} />}
+    <meta property="og:image" content={ogImage} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Collarbell" />
+    <meta property="og:locale" content={OG_LOCALES[lang]} />
+    <meta property="og:locale:alternate" content={OG_LOCALES[otherLang(lang)]} />
+    <meta name="twitter:card" content="summary_large_image" />
+  </head>
+  <body class={bodyClass}>
+    <a class="skip-link" href="#main">{UI[lang].skipLink}</a>
+    <Header lang={lang} page={page} />
+    <main id="main">
+      <slot />
+    </main>
+    <Footer lang={lang} page={page} />
+  </body>
+</html>

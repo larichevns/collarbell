@@ -1,0 +1,19 @@
+---
+// An inline icon from src/icons.ts. Decorative: the text next to it says what it means.
+import { ICONS, type IconName } from '../icons';
+
+interface Props {
+  name: IconName;
+  size?: number;
+}
+
+const { name, size = 24 } = Astro.props;
+---
+
+<svg
+  width={size}
+  height={size}
+  viewBox="0 -960 960 960"
+  fill="currentColor"
+  aria-hidden="true"
+  focusable="false"><path d={ICONS[name]}></path></svg>

@@ -1,0 +1,37 @@
+// coverage:ignore-file
+// GENERATED CODE - DO NOT MODIFY BY HAND
+// ignore_for_file: type=lint, unused_import, invalid_annotation_target, unnecessary_import
+
+import 'package:json_annotation/json_annotation.dart';
+
+@JsonEnum()
+enum Coat {
+  @JsonValue('Smoke')
+  smoke('Smoke'),
+  @JsonValue('Ginger')
+  ginger('Ginger'),
+  @JsonValue('Fawn')
+  fawn('Fawn'),
+  @JsonValue('Cocoa')
+  cocoa('Cocoa'),
+  @JsonValue('Lilac')
+  lilac('Lilac'),
+  @JsonValue('Ink')
+  ink('Ink'),
+  /// Default value for all unparsed values, allows backward compatibility when adding new values on the backend.
+  $unknown(null);
+
+  const Coat(this.json);
+
+  factory Coat.fromJson(dynamic json) => values.firstWhere(
+        (e) => e.json == json,
+        orElse: () => $unknown,
+      );
+
+  final dynamic json;
+
+  @override
+  String toString() => json?.toString() ?? super.toString();
+  /// Returns all defined enum values excluding the $unknown value.
+  static List<Coat> get $valuesDefined => values.where((value) => value != $unknown).toList();
+}

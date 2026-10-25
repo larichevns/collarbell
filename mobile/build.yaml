@@ -1,0 +1,11 @@
+targets:
+  $default:
+    builders:
+      json_serializable:
+        generate_for:
+          - lib/data/api/generated/**
+        options:
+          explicit_to_json: true
+      retrofit_generator:
+        generate_for:
+          - lib/data/api/generated/**

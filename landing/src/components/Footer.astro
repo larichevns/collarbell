@@ -1,0 +1,56 @@
+---
+// The bottom of every page: what Collarbell is, links to the pages app stores ask for, the web version, and the other
+// language.
+import Icon from './Icon.astro';
+import { LANG_NAMES, UI, otherLang, pageHref, type Lang, type PageKey } from '../i18n';
+import { webAppHref } from '../site';
+
+interface Props {
+  lang: Lang;
+  page?: PageKey;
+}
+
+const { lang, page } = Astro.props;
+const t = UI[lang];
+const other = otherLang(lang);
+const links: { key: PageKey; label: string }[] = [
+  { key: 'privacy', label: t.privacy },
+  { key: 'terms', label: t.terms },
+  { key: 'deleteAccount', label: t.deleteAccount },
+  { key: 'support', label: t.support },
+];
+---
+
+<footer class="site-footer">
+  <div class="wrap footer-grid">
+    <div class="footer-brand">
+      <a class="brand" href={pageHref(lang, 'home')}>
+        <img src="/favicon.svg" width="32" height="32" alt="" />
+        <span>Collarbell</span>
+      </a>
+      <p class="muted small">{t.tagline}</p>
+    </div>
+    <nav aria-label={t.footerNav}>
+      <ul class="footer-links">
+        {
+          links.map(({ key, label }) => (
+            <li>
+              <a class="pill-link" href={pageHref(lang, key)} aria-current={page === key ? 'page' : undefined}>
+                {label}
+              </a>
+            </li>
+          ))
+        }
+        <li>
+          <a class="pill-link" href={webAppHref(lang)}>{t.webVersion}</a>
+        </li>
+        <li>
+          <a class="pill-link" href={pageHref(other, page ?? 'home')} hreflang={other} lang={other}>
+            <Icon name="language" size={20} />
+            <span>{LANG_NAMES[other]}</span>
+          </a>
+        </li>
+      </ul>
+    </nav>
+  </div>
+</footer>

@@ -1,0 +1,46 @@
+---
+// An app screenshot in a simple phone frame. The screenshots are WebP files made by tool/make-assets.sh in two
+// widths (390 and 780 px) for each language; the build gives them hashed names under /_astro/.
+import type { ImageMetadata } from 'astro';
+import type { Lang } from '../i18n';
+
+type Screen = 'today' | 'health' | 'passport' | 'visits' | 'supplies' | 'supply';
+
+interface Props {
+  lang: Lang;
+  screen: Screen;
+  alt: string;
+  /** The first screen of the page: load it right away instead of lazily. */
+  eager?: boolean;
+  /** How wide the screenshot shows, for the browser to pick a file. */
+  sizes?: string;
+}
+
+const shots = import.meta.glob<{ default: ImageMetadata }>('../assets/screens/*/*.webp', { eager: true });
+
+function shot(lang: Lang, screen: Screen, width: number): ImageMetadata {
+  const file = shots[`../assets/screens/${lang}/${screen}-${width}.webp`];
+  if (!file) throw new Error(`No screenshot ${lang}/${screen}-${width}.webp: run tool/make-assets.sh`);
+  return file.default;
+}
+
+const { lang, screen, alt, eager = false, sizes = '(max-width: 420px) 248px, 272px' } = Astro.props;
+const small = shot(lang, screen, 390);
+const large = shot(lang, screen, 780);
+---
+
+<div class="phone">
+  <div class="phone-screen">
+    <img
+      src={large.src}
+      srcset={`${small.src} 390w, ${large.src} 780w`}
+      sizes={sizes}
+      width="390"
+      height="844"
+      alt={alt}
+      loading={eager ? 'eager' : 'lazy'}
+      decoding={eager ? 'auto' : 'async'}
+      fetchpriority={eager ? 'high' : undefined}
+    />
+  </div>
+</div>

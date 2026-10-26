@@ -21,7 +21,7 @@ photos of the sticker, and shows the next date before saving (worked out like
 the server: the chosen date, else "valid until", else one interval later; a
 one-off plan finishes). The history lists records newest first with a filter
 by kind; records are added by hand from the paper passport, with the fields of
-their kind. The Passport tab shows the health sections V–X built from the
+their kind. The Passport tab shows the health sections V-X built from the
 records. Today lists the care of all pets that is overdue, due soon or due
 later this month; a tap opens the pet's page on its Health tab, on top of
 Today (pushed, not a jump to the Pets tab), so a form left open in the Pets
@@ -35,7 +35,7 @@ iOS, the ML Kit document scanner on Android: edges found, pages
 straightened; shrunk to 2048 px JPEG on the phone) or from the photo library
 (also where there is no scanner, e.g. a simulator). The pages upload, the
 server starts reading them, and the copies on the phone are deleted; the
-screen asks every 2 seconds until the draft is ready (usually 10–60
+screen asks every 2 seconds until the draft is ready (usually 10-60
 seconds), not while the app is in the background (back in front, it asks at
 once). It can be left meanwhile: the Passport tab offers to pick the scan up
 again, and shows a scan that failed with why, "Try again" (the same photos,
@@ -148,7 +148,7 @@ Too many AI requests in a row (429) say to wait.
 
 Weight: the pet's page gets a Weight tab. It shows the latest weight large,
 with its date, the change since the weight before it ("+0.2 kg since Sep 12")
-and its body condition score ("BCS 5/9 · ideal 4–5"); a chart of the weight
+and its body condition score ("BCS 5/9 · ideal 4-5"); a chart of the weight
 over time (drawn with a `CustomPainter`: a line, a dot per weighing unless
 they crowd, a hollow diamond per vet's weight, the lowest and highest weight
 on the side, the first and last date below, a summary for screen readers),
@@ -457,7 +457,7 @@ lib/
     today/                TodayCare, TodayRepository, the Today screen, its first steps
                           (also on Home) and TodayReload (Home and Today)
     passport/             passport header (repository, Passport tab, form), passport pages,
-                          the health sections V–X
+                          the health sections V-X
     documents/            PetDocument, DocumentsRepository, Documents tab, form, detail
     weight/               weight.dart (the log, body condition score, periods, limits),
                           WeightRepository and its provider, refreshWeight, the Weight tab,
@@ -546,8 +546,8 @@ Rules that keep data safe:
   until "Save", which sends only the ticked entries. The server answers a
   scan saved before with the first result, so a save whose answer was lost
   (no connection, a timeout, a server error) is checked with
-  `GET /ai-imports/{id}` before anything else: saved — the review closes
-  with what was saved; not saved — it stays editable; unknown — the next
+  `GET /ai-imports/{id}` before anything else: saved - the review closes
+  with what was saved; not saved - it stays editable; unknown - the next
   save asks first. Otherwise a second save would get the first one's answer
   and drop the changes made since. "Discard" on a scan that turns out saved
   (409) says so. The server's field errors
@@ -653,8 +653,8 @@ In widgets: `context.cb.inkMuted` (colours), `context.cbText.displayLg` (type
 scale), `context.cbShadows.card`, and `CbSpace`, `CbRadius`, `CbSize` for
 dimensions. Rules: light theme by default; white screens with a blue-grey
 interface. The green has two shades: `primary` (bright #00B53F) is only a
-fill — the filled buttons and the FAB (white bold words on it), switches,
-radios, progress — and `primary-text` (darker #007F2B) is every green word,
+fill - the filled buttons and the FAB (white bold words on it), switches,
+radios, progress - and `primary-text` (darker #007F2B) is every green word,
 small green icon and thin green line on white or mint: text buttons, the
 selected tab, chip, segment and navigation item, the focused field;
 `accent` (yellow) is only a fill, never text on white: "soon", "time to buy"
@@ -734,9 +734,9 @@ camera), checks the Passport and Documents tabs and deletes the pet again.
 deworming from a preset with a "last done" date so it is due soon, sees it on
 Today, marks it done there with a photo (it leaves Today), adds a past rabies
 vaccination and finds it in the passport's section V, and deletes the cat
-(screenshots `41`–`51`). `care_ru_test.dart` (`e2e-care-ru@collarbell.local`)
+(screenshots `41`-`51`). `care_ru_test.dart` (`e2e-care-ru@collarbell.local`)
 switches the app to Russian, fills plans and records through the
-repositories and photographs each care screen (`60`–`70`); run it on a small
+repositories and photographs each care screen (`60`-`70`); run it on a small
 simulator, e.g. an iPhone SE (3rd generation). `smoke_test.dart` and
 `firebase_smoke_test.dart` check sign-in. Shared helpers (drawn pictures,
 date picking, cleanup) are in `integration_test/helpers.dart`.
@@ -747,7 +747,7 @@ scanner), waits for the real AI (up to three minutes), checks that the
 review links the vaccination to the plan, saves it, and finds it in the
 history with the plan moved to the vaccine's "valid until"; on the way it
 photographs the review in Russian with the dark theme and runs the AI
-screen's connection test (screenshots `80`–`89`).
+screen's connection test (screenshots `80`-`89`).
 
 ## Troubleshooting
 

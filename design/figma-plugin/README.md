@@ -1,6 +1,6 @@
 # Collarbell Bridge: building the Figma file from code
 
-The designer's Figma file «Collarbell — основа дизайна» is built by scripts, not by hand.
+The designer's Figma file «Collarbell - основа дизайна» is built by scripts, not by hand.
 Figma's free plan allows only a few remote calls a month, so a local plugin runs the
 scripts inside the Figma app instead.
 
@@ -76,7 +76,7 @@ inverse-primary coat-ginger coat-fawn coat-cocoa coat-smoke coat-lilac coat-ink 
 | `setAvatar(node, coat, letter)` | Sets the Pet avatar inside a row or instance. |
 | `await place(area, slot, frame, refName)` | Puts the screen in its area section at column `slot`, with the app screenshot beside it and a caption above. Replaces an earlier version with the same frame name, and shoots the frame to `shots/<refName>`. |
 
-Screens are named «Экран — состояние» (e.g. «Питомцы — список»). A scrolling screen is
+Screens are named «Экран - состояние» (e.g. «Питомцы - список»). A scrolling screen is
 built at its full height and placed with the `_full` screenshot.
 
 ## Rebuilding everything

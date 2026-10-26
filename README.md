@@ -2,13 +2,13 @@
 
 A care tracker for cat and dog households: feeding reminders, vaccinations and parasite treatments, a digital copy of the pet passport, and food supplies that don't run out.
 
-- **How to read the code (start here)** — [docs/code-guide.md](docs/code-guide.md)
-- Product research — [docs/product-research.md](docs/product-research.md)
-- MVP spec and milestones — [docs/mvp-spec.md](docs/mvp-spec.md)
-- System design — [docs/system-design.md](docs/system-design.md)
-- Name check — [docs/naming.md](docs/naming.md)
+- **How to read the code (start here)** - [docs/code-guide.md](docs/code-guide.md)
+- Product research - [docs/product-research.md](docs/product-research.md)
+- MVP spec and milestones - [docs/mvp-spec.md](docs/mvp-spec.md)
+- System design - [docs/system-design.md](docs/system-design.md)
+- Name check - [docs/naming.md](docs/naming.md)
 - Design system tokens live in [design/tokens.json](design/tokens.json)
-- **The server** — <https://collarbell.example.com>; how it runs and deploys: [deploy/README.md](deploy/README.md)
+- **The server** - <https://collarbell.example.com>; how it runs and deploys: [deploy/README.md](deploy/README.md)
 
 ## Repository
 
@@ -31,12 +31,12 @@ docs/         research, spec, system design
 | Aspire CLI | 13.6 | `dotnet tool install -g Aspire.Cli` |
 | Docker | running | Docker Desktop |
 | Flutter | 3.38.9 stable | `brew install --cask flutter` |
-| Xcode / Android SDK | for running the app | — |
+| Xcode / Android SDK | for running the app | - |
 | Firebase CLI, FlutterFire CLI | for real sign-in | `npm i -g firebase-tools`, `dart pub global activate flutterfire_cli` |
 
 ## Run locally
 
-**Backend** — Postgres and SeaweedFS (file storage with an S3 API) in Docker, plus the API, with the Aspire dashboard:
+**Backend** - Postgres and SeaweedFS (file storage with an S3 API) in Docker, plus the API, with the Aspire dashboard:
 
 ```bash
 cd backend
@@ -55,7 +55,7 @@ dotnet run --project src/Collarbell.AppHost
 
   The first call creates the user and a household. Dev users exist only in Development and Testing (`Auth:DevUsers:Enabled`).
 
-**Mobile** — see [mobile/README.md](mobile/README.md). In short:
+**Mobile** - see [mobile/README.md](mobile/README.md). In short:
 
 ```bash
 cd mobile
@@ -64,7 +64,7 @@ flutter run --dart-define=CB_API_BASE_URL=http://localhost:5080
 
 In debug builds the app uses dev sign-in by default; see [Firebase sign-in](#firebase-sign-in) to use real accounts.
 
-**On your Android phone** — with the phone on a USB cable and USB debugging on:
+**On your Android phone** - with the phone on a USB cable and USB debugging on:
 
 ```bash
 sh mobile/tool/install_phone.sh
@@ -127,8 +127,8 @@ Reminders (feeding, vaccinations and treatments, visits) go out through Firebase
 
 Supplies, their forecast and the "time to buy" reminders need nothing extra. Scanning a barcode looks the product up in outside databases from the server, so the server needs internet access:
 
-- [Open Pet Food Facts](https://world.openpetfoodfacts.org) — free, no key; the app shows its data with the source (ODbL), and it isn't copied into our catalog;
-- [UPCitemdb](https://www.upcitemdb.com) — the free trial API, 100 lookups a day, no key; name and brand only.
+- [Open Pet Food Facts](https://world.openpetfoodfacts.org) - free, no key; the app shows its data with the source (ODbL), and it isn't copied into our catalog;
+- [UPCitemdb](https://www.upcitemdb.com) - the free trial API, 100 lookups a day, no key; name and brand only.
 
 Both can be turned off in `Products` settings (`Products:OpenPetFoodFacts`, `Products:UpcItemDb`). Photos of a package are read by the same AI as passport scans: the Gemini key in the AppHost user secrets as `Parameters:gemini-api-key` ([mvp-spec](docs/mvp-spec.md), decisions of M3).
 

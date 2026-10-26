@@ -32,7 +32,7 @@ What it does:
     saved one request per row; and, when the server has AI, **"Scan a vet document"** and **"Write it in words"**
     (see AI below).
   - **Passport**: its details (model, number, country, date of issue, the vet who issued it, owners), the photographed
-    pages (drop several at once, view them large, delete one), the health sections V–X, the note that the digital
+    pages (drop several at once, view them large, delete one), the health sections V-X, the note that the digital
     copy is for information only; **"Scan passport pages"** when the server has AI.
   - **Documents**: by type; drop scans, photos or PDF files to make a document of them, in that order; pages large with
     the arrow keys, a PDF in a new tab; pages added and removed; details changed; documents deleted.
@@ -206,7 +206,7 @@ tool/gen-theme.mjs    styles/theme.css from styles/tokens.css
   changes). The month's photos (409 ai-limit), the day's notes (429 text-limit), the pace (any other 429, with
   Retry-After) and AI not set up (any other 409: ASP.NET fills in RFC 9110's type, which says nothing more) are said
   in words; not set up, whether AI is set up is read again, and its buttons go. A chip's number and a package come
-  from `POST /pets/identifiers/scan` and `POST /products/scan`, with 1–3 photos and no draft to keep; one card reads at
+  from `POST /pets/identifiers/scan` and `POST /products/scan`, with 1-3 photos and no draft to keep; one card reads at
   a time.
 - **Deleting the account**: `GET /me/deletion` (the groups' fates and a fingerprint of them, the person's own), the
   password again (Firebase's reauthentication, so the token is fresh), then `DELETE /me?plan=<fingerprint>` with the
